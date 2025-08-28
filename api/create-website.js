@@ -330,27 +330,11 @@ async function handleCreateWebsite(request, response) {
             fs.renameSync(uploadedFile.filepath, path.join(tempDir, "index.html"));
         } else throw new Error("Format file tidak didukung.");
         
-        // --- AWAL PERUBAHAN ---
-        // Logika baru untuk secara cerdas menemukan direktori utama website.
         let uploadRoot = tempDir;
-        
-        // Hanya jalankan pencarian jika yang diupload adalah file zip
-        if (uploadedFile.mimetype === "application/zip") {
-            // Kita gunakan fungsi getAllFiles yang sudah ada untuk memindai semua file hasil ekstraksi.
-            const allExtractedFiles = getAllFiles(tempDir, []);
-            
-            // Cari path lengkap ke file 'index.html' (tidak case-sensitive).
-            const indexPath = allExtractedFiles.find(f => path.basename(f).toLowerCase() === 'index.html');
-
-            if (indexPath) {
-                // Jika index.html ditemukan, direktori utamanya adalah folder tempat file itu berada.
-                uploadRoot = path.dirname(indexPath);
-            } else {
-                // Jika tidak ada index.html sama sekali, lempar error.
-                throw new Error("File index.html tidak dapat ditemukan di dalam file .zip Anda.");
-            }
+        const entries = fs.readdirSync(tempDir);
+        if (entries.length === 1 && fs.statSync(path.join(tempDir, entries[0])).isDirectory()) {
+            uploadRoot = path.join(tempDir, entries[0]);
         }
-        // --- AKHIR PERUBAHAN ---
         
         await octokit.repos.createForAuthenticatedUser({ name: repoName, private: false });
         
