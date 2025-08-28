@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // === Elemen UI (Lama & Baru) ===
+    // === Elemen UI ===
     const creatorForm = document.getElementById('creator-form');
     const subdomainInput = document.getElementById('subdomain-name');
     const rootDomainSelect = document.getElementById('root-domain-select');
@@ -10,31 +10,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const btnText = document.getElementById('btn-text');
     const sitesContainer = document.getElementById('created-sites-container');
     const sitesList = document.getElementById('sites-list');
-    const detailsModal = document.getElementById('details-modal');
-    const modalCloseBtn = document.getElementById('modal-close-btn');
-    const modalVercelUrl = document.getElementById('modal-vercel-url');
-    const modalCustomUrl = document.getElementById('modal-custom-url');
-    const modalCheckStatusBtn = document.getElementById('modal-check-status-btn');
+    const detailsModalContainer = document.getElementById('details-modal');
     const themeToggle = document.getElementById('theme-toggle');
     const body = document.body;
     const loadingOverlay = document.getElementById('loading-overlay');
-    const confirmationModal = document.getElementById('confirmation-modal');
-    const confirmBtnYes = document.getElementById('confirm-btn-yes');
-    const confirmBtnNo = document.getElementById('confirm-btn-no');
-    // Elemen Baru
     const showGuideLink = document.getElementById('show-guide-link');
     const guideModal = document.getElementById('guide-modal');
     const guideCloseBtn = document.getElementById('guide-close-btn');
-    const discountBanner = document.getElementById('discount-banner');
-    const countdownTimer = document.getElementById('countdown-timer');
-    const normalPriceDisplay = document.getElementById('normal-price-display');
-    const finalPriceDisplay = document.getElementById('final-price-display');
-    const buyButton = document.getElementById('buy-button');
-
+    const pricingGrid = document.getElementById('pricing-grid');
 
     // === Variabel & State ===
     let toastTimeout;
-    let countdownInterval;
     let settings = {};
 
     // === Fungsi Bantuan & UI ===
@@ -53,30 +39,24 @@ document.addEventListener('DOMContentLoaded', () => {
         themeToggle.innerHTML = theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
     };
 
-    // === Manajemen Data (Lengkap) ===
-    const getSites = () => JSON.parse(localStorage.getItem('createdSites_v1')) || [];
+    // === Manajemen Data Lokal ===
+    const getSites = () => JSON.parse(localStorage.getItem('createdSites_v2')) || [];
     const saveSite = (siteData) => {
         const sites = getSites();
         sites.unshift(siteData);
-        localStorage.setItem('createdSites_v1', JSON.stringify(sites));
-    };
-    const removeSite = (projectName) => {
-        let sites = getSites();
-        sites = sites.filter(s => s.projectName !== projectName);
-        localStorage.setItem('createdSites_v1', JSON.stringify(sites));
-        renderSitesList();
+        localStorage.setItem('createdSites_v2', JSON.stringify(sites));
     };
     const updateSiteStatus = (projectName, newStatus) => {
         const sites = getSites();
         const siteIndex = sites.findIndex(s => s.projectName === projectName);
         if (siteIndex > -1) {
             sites[siteIndex].status = newStatus;
-            localStorage.setItem('createdSites_v1', JSON.stringify(sites));
+            localStorage.setItem('createdSites_v2', JSON.stringify(sites));
         }
         return sites[siteIndex];
     };
 
-    // === Fungsi Render Tampilan (Lengkap) ===
+    // === Fungsi Render Tampilan ===
     const renderSitesList = () => {
         const sites = getSites();
         sitesContainer.style.display = sites.length > 0 ? 'block' : 'none';
@@ -87,67 +67,79 @@ document.addEventListener('DOMContentLoaded', () => {
             item.innerHTML = `
                 <div class="site-info">
                     <h3>${site.customUrl.replace('https://','')}</h3>
-                    <p>${site.vercelUrl.replace('https://','')}</p>
                 </div>
                 <span class="status ${site.status}">${site.status === 'success' ? 'Aktif' : 'Menunggu'}</span>
-                <button class="delete-site-btn" title="Hapus dari riwayat"><i class="fas fa-times"></i></button>
             `;
-            item.addEventListener('click', (e) => {
-                if (!e.target.closest('.delete-site-btn')) {
-                    showDetailsModal(site);
-                }
-            });
-            item.querySelector('.delete-site-btn').addEventListener('click', (e) => {
-                e.stopPropagation();
-                showConfirmation('Hapus Riwayat?', `Yakin ingin menghapus riwayat untuk "${site.customUrl.replace('https://','')}"? Ini tidak akan menghapus websitenya.`).then(confirmed => {
-                    if (confirmed) {
-                        removeSite(site.projectName);
-                        showToast('Riwayat berhasil dihapus.', 'success');
-                    }
-                });
-            });
+            item.addEventListener('click', () => showDetailsModal(site));
             sitesList.appendChild(item);
         });
     };
     
-    const showConfirmation = (title, message) => {
-        confirmationModal.querySelector('#confirmation-modal-title').textContent = title;
-        confirmationModal.querySelector('#confirmation-modal-message').textContent = message;
-        confirmationModal.classList.add('show');
-        return new Promise(resolve => {
-            const close = (value) => {
-                confirmationModal.classList.remove('show');
-                resolve(value);
-            };
-            confirmBtnYes.onclick = () => close(true);
-            confirmBtnNo.onclick = () => close(false);
-        });
-    };
-
     const showDetailsModal = (siteData) => {
-        modalVercelUrl.href = siteData.vercelUrl;
-        modalVercelUrl.textContent = siteData.vercelUrl.replace('https://','');
-        modalCustomUrl.href = siteData.customUrl;
-        modalCustomUrl.textContent = siteData.customUrl.replace('https://','');
-        modalCheckStatusBtn.dataset.project = siteData.projectName;
-        modalCheckStatusBtn.dataset.domain = siteData.customUrl.replace('https://','');
+        detailsModalContainer.innerHTML = `
+            <div class="modal-content">
+                <h2>Detail Website</h2>
+                <div class="form-group">
+                    <label>URL Vercel</label>
+                    <a href="${siteData.vercelUrl}" target="_blank">${siteData.vercelUrl}</a>
+                </div>
+                <div class="form-group">
+                    <label>URL Custom</label>
+                    <a href="${siteData.customUrl}" target="_blank">${siteData.customUrl}</a>
+                </div>
+                <button id="modal-check-status-btn" data-project="${siteData.projectName}" data-domain="${siteData.customUrl.replace('https://','')}"></button>
+                <button id="modal-close-btn" class="button-primary" style="margin-top: 10px; background-color: var(--text-muted);">Tutup</button>
+            </div>
+        `;
+        const modalCheckStatusBtn = detailsModalContainer.querySelector('#modal-check-status-btn');
+        const modalCloseBtn = detailsModalContainer.querySelector('#modal-close-btn');
+
+        const updateModalStatus = (status) => {
+            modalCheckStatusBtn.disabled = false;
+            modalCheckStatusBtn.innerHTML = '<i class="fas fa-sync-alt"></i> Cek Status';
+            if (status === 'success') {
+                modalCheckStatusBtn.className = 'status success';
+                modalCheckStatusBtn.innerHTML = '<i class="fas fa-check"></i> Aktif';
+                modalCheckStatusBtn.disabled = true;
+            } else {
+                modalCheckStatusBtn.className = 'button-primary status pending';
+            }
+        };
+
         updateModalStatus(siteData.status);
-        detailsModal.classList.add('show');
+        detailsModalContainer.classList.add('show');
+        
+        modalCloseBtn.addEventListener('click', () => detailsModalContainer.classList.remove('show'));
+        modalCheckStatusBtn.addEventListener('click', checkDomainStatus);
     };
 
-    const updateModalStatus = (status) => {
-        modalCheckStatusBtn.disabled = false;
-        modalCheckStatusBtn.innerHTML = '<i class="fas fa-sync-alt"></i> <span id="modal-status-text">Cek Status</span>';
-        if (status === 'success') {
-            modalCheckStatusBtn.className = 'status success';
-            modalCheckStatusBtn.textContent = 'Aktif';
-            modalCheckStatusBtn.disabled = true;
-        } else {
-            modalCheckStatusBtn.className = 'check-status-btn status pending';
+    // === Logika API & Aksi ===
+    const checkDomainStatus = async (e) => {
+        const btn = e.currentTarget;
+        const { domain, project } = btn.dataset;
+        btn.disabled = true;
+        btn.innerHTML = '<div class="spinner" style="width:15px; height:15px; border-width:2px;"></div> Memeriksa...';
+        try {
+            const response = await fetch('/api/create-website', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'checkDomainStatus', data: { domain } })
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message);
+            if(result.status === 'success') {
+                const updatedSite = updateSiteStatus(project, result.status);
+                if(updatedSite) showDetailsModal(updatedSite);
+                renderSitesList();
+            }
+            showToast(result.message, result.status === 'success' ? 'success' : 'info');
+        } catch (error) {
+            showToast(error.message, 'error');
+        } finally {
+            // Re-enable handled by re-rendering modal
         }
     };
-
-    // === Logika API ===
+    
     const fetchDomains = async () => {
         try {
             const response = await fetch('/api/create-website');
@@ -179,51 +171,34 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
     
-    // === Fitur Harga & Diskon ===
+    // === Fitur Harga Dinamis ===
     const updatePricingUI = () => {
-        const normalPrice = settings.normalPrice || 0;
-        const discountPrice = settings.discountPrice || 0;
-        const discountEndDate = settings.discountEndDate ? new Date(settings.discountEndDate) : null;
-        const now = new Date();
-        const isDiscountActive = discountEndDate && discountEndDate > now;
-
-        if (isDiscountActive) {
-            discountBanner.style.display = 'block';
-            normalPriceDisplay.textContent = `Rp ${normalPrice.toLocaleString('id-ID')}`;
-            finalPriceDisplay.textContent = `Rp ${discountPrice.toLocaleString('id-ID')}`;
-            startCountdown(discountEndDate);
+        pricingGrid.innerHTML = ''; // Kosongkan grid
+        if (settings.pricingTiers && settings.pricingTiers.length > 0) {
+            settings.pricingTiers.forEach(tier => {
+                const priceCard = document.createElement('div');
+                priceCard.className = 'price-card';
+                priceCard.innerHTML = `
+                    <h3>${tier.name}</h3>
+                    <p>${tier.description || '&nbsp;'}</p>
+                    <div class="price-tag">
+                        <div class="final-price">Rp ${parseInt(tier.price).toLocaleString('id-ID')}</div>
+                    </div>
+                    <button class="button-primary buy-button" data-package-name="${tier.name}">
+                        <i class="fab fa-whatsapp"></i> Beli via WhatsApp
+                    </button>
+                `;
+                pricingGrid.appendChild(priceCard);
+            });
         } else {
-            discountBanner.style.display = 'none';
-            normalPriceDisplay.textContent = '';
-            finalPriceDisplay.textContent = `Rp ${normalPrice.toLocaleString('id-ID')}`;
-            if(countdownInterval) clearInterval(countdownInterval);
+            pricingGrid.innerHTML = '<p>Pilihan harga belum diatur oleh admin.</p>';
         }
     };
     
-    const startCountdown = (endDate) => {
-        if(countdownInterval) clearInterval(countdownInterval);
-        const update = () => {
-            const now = new Date().getTime();
-            const distance = endDate - now;
-            if (distance < 0) {
-                clearInterval(countdownInterval);
-                updatePricingUI();
-                return;
-            }
-            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
-            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
-            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
-            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
-            countdownTimer.textContent = `${days}h : ${hours}j : ${minutes}m : ${seconds}d`;
-        };
-        update();
-        countdownInterval = setInterval(update, 1000);
-    };
-
-    // === Event Listeners (Lengkap) ===
+    // === Event Listeners ===
     themeToggle.addEventListener('click', () => {
         const newTheme = body.classList.contains('dark-mode') ? 'light' : 'dark';
-        localStorage.setItem('theme_preference_v1', newTheme);
+        localStorage.setItem('theme_preference_v2', newTheme);
         applyTheme(newTheme);
     });
 
@@ -237,29 +212,26 @@ document.addEventListener('DOMContentLoaded', () => {
         fileNameSpan.textContent = websiteFileInput.files.length > 0 ? websiteFileInput.files[0].name : 'Pilih file...';
     });
     
-    buyButton.addEventListener('click', () => {
-        const waNumber = settings.whatsappNumber;
-        if (!waNumber) {
-            return showToast('Nomor WhatsApp admin belum diatur.', 'error');
+    pricingGrid.addEventListener('click', (e) => {
+        if (e.target.classList.contains('buy-button')) {
+            const waNumber = settings.whatsappNumber;
+            if (!waNumber) {
+                return showToast('Nomor WhatsApp admin belum diatur.', 'error');
+            }
+            const packageName = e.target.dataset.packageName;
+            const message = encodeURIComponent(`Halo, saya tertarik untuk membeli API Key "${packageName}".`);
+            window.open(`https://wa.me/${waNumber}?text=${message}`, '_blank');
         }
-        const message = encodeURIComponent('Halo, saya tertarik untuk membeli API Key Permanen.');
-        window.open(`https://wa.me/${waNumber}?text=${message}`, '_blank');
     });
 
-    showGuideLink.addEventListener('click', (e) => {
-        e.preventDefault();
-        guideModal.classList.add('show');
-    });
+    showGuideLink.addEventListener('click', (e) => { e.preventDefault(); guideModal.classList.add('show'); });
     guideCloseBtn.addEventListener('click', () => guideModal.classList.remove('show'));
-    guideModal.addEventListener('click', (e) => {
-        if(e.target === guideModal) guideModal.classList.remove('show');
-    });
+    guideModal.addEventListener('click', (e) => { if(e.target === guideModal) guideModal.classList.remove('show'); });
+    detailsModalContainer.addEventListener('click', (e) => { if(e.target === detailsModalContainer) detailsModalContainer.classList.remove('show'); });
+
 
     creatorForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        if (!subdomainInput.value || !rootDomainSelect.value || !websiteFileInput.files[0] || !userApiKeyInput.value) {
-            return showToast('Harap isi semua kolom!', 'error');
-        }
         createBtn.disabled = true;
         btnText.textContent = 'Memproses...';
         const spinner = document.createElement('div');
@@ -274,13 +246,11 @@ document.addEventListener('DOMContentLoaded', () => {
 
         try {
             const response = await fetch('/api/create-website', { method: 'POST', body: formData });
-            
             const contentType = response.headers.get("content-type");
             if (!contentType || !contentType.includes("application/json")) {
                 const textError = await response.text();
                 throw new Error(textError.includes('Request Entity Too Large') ? 'File terlalu besar (maks 4.5 MB).' : 'Terjadi error di server.');
             }
-
             const result = await response.json();
             if (!response.ok) throw new Error(result.message);
             
@@ -299,52 +269,19 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    modalCloseBtn.addEventListener('click', () => detailsModal.classList.remove('show'));
-    detailsModal.addEventListener('click', (e) => {
-        if(e.target === detailsModal) detailsModal.classList.remove('show');
-    });
-
-    modalCheckStatusBtn.addEventListener('click', async (e) => {
-        const btn = e.currentTarget;
-        const { domain, project } = btn.dataset;
-        btn.disabled = true;
-        btn.innerHTML = '<div class="spinner" style="width:15px; height:15px; border-width:2px;"></div> Memeriksa...';
-        try {
-            const response = await fetch('/api/create-website', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'checkDomainStatus', data: { domain } })
-            });
-            const result = await response.json();
-            if (!response.ok) throw new Error(result.message);
-            if(result.status === 'success') {
-                const updatedSite = updateSiteStatus(project, result.status);
-                if(updatedSite) updateModalStatus(updatedSite.status);
-                renderSitesList();
-            } else {
-                 updateModalStatus('pending');
-            }
-            showToast(result.message, result.status === 'success' ? 'success' : 'info');
-        } catch (error) {
-            showToast(error.message, 'error');
-            updateModalStatus('pending');
-        }
-    });
-
     // === Inisialisasi Halaman ===
     const initializePage = async () => {
-        const savedTheme = localStorage.getItem('theme_preference_v1') || 'light';
+        const savedTheme = localStorage.getItem('theme_preference_v2') || 'light';
         applyTheme(savedTheme);
         renderSitesList();
 
         try {
-            await Promise.all([
-                fetchDomains(),
-                fetchSettings()
-            ]);
+            await Promise.all([ fetchDomains(), fetchSettings() ]);
         } catch (error) {
             console.error("Gagal inisialisasi halaman:", error);
+            showToast(error.message, 'error');
         } finally {
+            // Sembunyikan loading overlay setelah semua proses fetch selesai
             loadingOverlay.classList.add('hidden');
         }
     };
