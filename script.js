@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // Elemen UI
+    // === Elemen UI (Lama & Baru) ===
     const creatorForm = document.getElementById('creator-form');
     const subdomainInput = document.getElementById('subdomain-name');
     const rootDomainSelect = document.getElementById('root-domain-select');
@@ -21,38 +21,39 @@ document.addEventListener('DOMContentLoaded', () => {
     const confirmationModal = document.getElementById('confirmation-modal');
     const confirmBtnYes = document.getElementById('confirm-btn-yes');
     const confirmBtnNo = document.getElementById('confirm-btn-no');
+    // Elemen Baru
+    const showGuideLink = document.getElementById('show-guide-link');
+    const guideModal = document.getElementById('guide-modal');
+    const guideCloseBtn = document.getElementById('guide-close-btn');
+    const discountBanner = document.getElementById('discount-banner');
+    const countdownTimer = document.getElementById('countdown-timer');
+    const normalPriceDisplay = document.getElementById('normal-price-display');
+    const finalPriceDisplay = document.getElementById('final-price-display');
+    const buyButton = document.getElementById('buy-button');
 
+
+    // === Variabel & State ===
     let toastTimeout;
+    let countdownInterval;
+    let settings = {};
 
-    // --- NOTIFIKASI, TEMA, & LOADING ---
+    // === Fungsi Bantuan & UI ===
     const showToast = (message, type = 'info') => {
         const toast = document.getElementById('toast-notification');
         clearTimeout(toastTimeout);
         const iconMap = { success: 'fa-check-circle', error: 'fa-times-circle', info: 'fa-info-circle' };
         toast.innerHTML = `<i class="fas ${iconMap[type]}"></i> ${message}`;
         toast.className = '';
-        toast.classList.add(type);
-        toast.classList.add('show');
-        toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 3000);
+        toast.classList.add(type, 'show');
+        toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 4000);
     };
 
     const applyTheme = (theme) => {
-        if (theme === 'dark') {
-            body.classList.add('dark-mode');
-            themeToggle.innerHTML = '<i class="fas fa-sun"></i>';
-        } else {
-            body.classList.remove('dark-mode');
-            themeToggle.innerHTML = '<i class="fas fa-moon"></i>';
-        }
+        body.classList.toggle('dark-mode', theme === 'dark');
+        themeToggle.innerHTML = theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
     };
-    
-    themeToggle.addEventListener('click', () => {
-        const newTheme = body.classList.contains('dark-mode') ? 'light' : 'dark';
-        localStorage.setItem('theme_preference_v1', newTheme);
-        applyTheme(newTheme);
-    });
 
-    // --- MANAJEMEN DATA ---
+    // === Manajemen Data (Lengkap) ===
     const getSites = () => JSON.parse(localStorage.getItem('createdSites_v1')) || [];
     const saveSite = (siteData) => {
         const sites = getSites();
@@ -75,14 +76,10 @@ document.addEventListener('DOMContentLoaded', () => {
         return sites[siteIndex];
     };
 
-    // --- FUNGSI TAMPILAN (RENDER) ---
+    // === Fungsi Render Tampilan (Lengkap) ===
     const renderSitesList = () => {
         const sites = getSites();
-        if (sites.length === 0) {
-            sitesContainer.style.display = 'none';
-            return;
-        }
-        sitesContainer.style.display = 'block';
+        sitesContainer.style.display = sites.length > 0 ? 'block' : 'none';
         sitesList.innerHTML = '';
         sites.forEach(site => {
             const item = document.createElement('div');
@@ -150,31 +147,86 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
+    // === Logika API ===
     const fetchDomains = async () => {
         try {
             const response = await fetch('/api/create-website');
             if (!response.ok) throw new Error('Gagal memuat domain');
             const domains = await response.json();
-            rootDomainSelect.innerHTML = '';
-            if (domains.length > 0) {
-                domains.forEach(domain => {
-                    const option = document.createElement('option');
-                    option.value = domain;
-                    option.textContent = `.${domain}`;
-                    rootDomainSelect.appendChild(option);
-                });
-            } else {
-                 rootDomainSelect.innerHTML = '<option value="">Tidak ada domain</option>';
-                 showToast('Admin belum menambahkan domain utama.', 'error');
-            }
+            rootDomainSelect.innerHTML = domains.length > 0
+                ? domains.map(domain => `<option value="${domain}">.${domain}</option>`).join('')
+                : '<option value="">Tidak ada domain</option>';
+            if (domains.length === 0) showToast('Admin belum menambahkan domain utama.', 'error');
         } catch (error) {
-            console.error(error);
             rootDomainSelect.innerHTML = '<option value="">Error memuat</option>';
             throw error;
         }
     };
     
-    // --- VALIDASI & INTERAKSI FORM ---
+    const fetchSettings = async () => {
+        try {
+            const response = await fetch('/api/create-website', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'getSettings' })
+            });
+            if (!response.ok) throw new Error('Gagal memuat pengaturan harga.');
+            settings = await response.json();
+            updatePricingUI();
+        } catch (error) {
+            console.error(error);
+            showToast(error.message, 'error');
+        }
+    };
+    
+    // === Fitur Harga & Diskon ===
+    const updatePricingUI = () => {
+        const normalPrice = settings.normalPrice || 0;
+        const discountPrice = settings.discountPrice || 0;
+        const discountEndDate = settings.discountEndDate ? new Date(settings.discountEndDate) : null;
+        const now = new Date();
+        const isDiscountActive = discountEndDate && discountEndDate > now;
+
+        if (isDiscountActive) {
+            discountBanner.style.display = 'block';
+            normalPriceDisplay.textContent = `Rp ${normalPrice.toLocaleString('id-ID')}`;
+            finalPriceDisplay.textContent = `Rp ${discountPrice.toLocaleString('id-ID')}`;
+            startCountdown(discountEndDate);
+        } else {
+            discountBanner.style.display = 'none';
+            normalPriceDisplay.textContent = '';
+            finalPriceDisplay.textContent = `Rp ${normalPrice.toLocaleString('id-ID')}`;
+            if(countdownInterval) clearInterval(countdownInterval);
+        }
+    };
+    
+    const startCountdown = (endDate) => {
+        if(countdownInterval) clearInterval(countdownInterval);
+        const update = () => {
+            const now = new Date().getTime();
+            const distance = endDate - now;
+            if (distance < 0) {
+                clearInterval(countdownInterval);
+                updatePricingUI();
+                return;
+            }
+            const days = Math.floor(distance / (1000 * 60 * 60 * 24));
+            const hours = Math.floor((distance % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
+            const seconds = Math.floor((distance % (1000 * 60)) / 1000);
+            countdownTimer.textContent = `${days}h : ${hours}j : ${minutes}m : ${seconds}d`;
+        };
+        update();
+        countdownInterval = setInterval(update, 1000);
+    };
+
+    // === Event Listeners (Lengkap) ===
+    themeToggle.addEventListener('click', () => {
+        const newTheme = body.classList.contains('dark-mode') ? 'light' : 'dark';
+        localStorage.setItem('theme_preference_v1', newTheme);
+        applyTheme(newTheme);
+    });
+
     subdomainInput.addEventListener('input', (e) => {
         const originalValue = e.target.value;
         const formattedValue = originalValue.toLowerCase().replace(/\s+/g, '-').replace(/[^a-z0-9-]/g, '');
@@ -183,6 +235,24 @@ document.addEventListener('DOMContentLoaded', () => {
 
     websiteFileInput.addEventListener('change', () => {
         fileNameSpan.textContent = websiteFileInput.files.length > 0 ? websiteFileInput.files[0].name : 'Pilih file...';
+    });
+    
+    buyButton.addEventListener('click', () => {
+        const waNumber = settings.whatsappNumber;
+        if (!waNumber) {
+            return showToast('Nomor WhatsApp admin belum diatur.', 'error');
+        }
+        const message = encodeURIComponent('Halo, saya tertarik untuk membeli API Key Permanen.');
+        window.open(`https://wa.me/${waNumber}?text=${message}`, '_blank');
+    });
+
+    showGuideLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        guideModal.classList.add('show');
+    });
+    guideCloseBtn.addEventListener('click', () => guideModal.classList.remove('show'));
+    guideModal.addEventListener('click', (e) => {
+        if(e.target === guideModal) guideModal.classList.remove('show');
     });
 
     creatorForm.addEventListener('submit', async (e) => {
@@ -195,15 +265,25 @@ document.addEventListener('DOMContentLoaded', () => {
         const spinner = document.createElement('div');
         spinner.className = 'spinner';
         createBtn.prepend(spinner);
+
         const formData = new FormData();
         formData.append('subdomain', subdomainInput.value.trim());
         formData.append('rootDomain', rootDomainSelect.value);
         formData.append('apiKey', userApiKeyInput.value.trim());
         formData.append('websiteFile', websiteFileInput.files[0]);
+
         try {
             const response = await fetch('/api/create-website', { method: 'POST', body: formData });
+            
+            const contentType = response.headers.get("content-type");
+            if (!contentType || !contentType.includes("application/json")) {
+                const textError = await response.text();
+                throw new Error(textError.includes('Request Entity Too Large') ? 'File terlalu besar (maks 4.5 MB).' : 'Terjadi error di server.');
+            }
+
             const result = await response.json();
             if (!response.ok) throw new Error(result.message);
+            
             saveSite(result.siteData);
             renderSitesList();
             showDetailsModal(result.siteData);
@@ -250,26 +330,21 @@ document.addEventListener('DOMContentLoaded', () => {
             updateModalStatus('pending');
         }
     });
-    
-    // --- INISIALISASI ---
+
+    // === Inisialisasi Halaman ===
     const initializePage = async () => {
         const savedTheme = localStorage.getItem('theme_preference_v1') || 'light';
         applyTheme(savedTheme);
         renderSitesList();
 
-        const failSafeTimeout = setTimeout(() => {
-            if (!loadingOverlay.classList.contains('hidden')) {
-                loadingOverlay.classList.add('hidden');
-                showToast('Gagal memuat beberapa data, silakan refresh.', 'error');
-            }
-        }, 8000);
-
         try {
-            await fetchDomains();
+            await Promise.all([
+                fetchDomains(),
+                fetchSettings()
+            ]);
         } catch (error) {
-            console.error("Gagal memuat domain:", error);
+            console.error("Gagal inisialisasi halaman:", error);
         } finally {
-            clearTimeout(failSafeTimeout);
             loadingOverlay.classList.add('hidden');
         }
     };

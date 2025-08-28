@@ -29,11 +29,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const cfNameserverList = document.getElementById('cf-nameserver-list');
     const cfSuccessOkBtn = document.getElementById('cf-success-ok-btn');
     
+    // ELEMEN BARU
+    const settingsForm = document.getElementById('settings-form');
+    const waInput = document.getElementById('whatsapp-number');
+    const normalPriceInput = document.getElementById('normal-price');
+    const discountPriceInput = document.getElementById('discount-price');
+    const discountDateInput = document.getElementById('discount-end-date');
+    const logoutBtn = document.getElementById('logout-btn');
+
     let apiKeyTextToCopy = '';
 
     // === Fungsi Bantuan & Logika Umum ===
-
-    // FUNGSI BARU: Untuk memformat tanggal dan jam secara konsisten
     const formatFullDate = (isoString) => new Date(isoString).toLocaleString('id-ID', {
         day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
     });
@@ -70,29 +76,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const showApiKeySuccessPopup = (newKey) => {
         const expiryText = newKey.expires_at === 'permanent' ? 'Permanen' : formatFullDate(newKey.expires_at);
-        
-        apiKeyDetailsContainer.innerHTML = `
-            <div class="detail-item">
-                <span class="detail-label">Kunci API</span>
-                <span class="detail-value">${newKey.name}</span>
-            </div>
-            <div class="detail-item">
-                <span class="detail-label">Dibuat</span>
-                <span class="detail-value">${formatFullDate(newKey.created_at)}</span>
-            </div>
-            <div class="detail-item">
-                <span class="detail-label">Kadaluwarsa</span>
-                <span class="detail-value">${expiryText}</span>
-            </div>`;
+        apiKeyDetailsContainer.innerHTML = `<div class="detail-item"><span class="detail-label">Kunci API</span><span class="detail-value">${newKey.name}</span></div><div class="detail-item"><span class="detail-label">Dibuat</span><span class="detail-value">${formatFullDate(newKey.created_at)}</span></div><div class="detail-item"><span class="detail-label">Kadaluwarsa</span><span class="detail-value">${expiryText}</span></div>`;
         const notes = "Harap simpan detail kunci ini dengan baik. Informasi ini bersifat rahasia dan tidak akan ditampilkan lagi demi keamanan Anda.";
-        apiKeyTextToCopy = `Ini adalah data apikey anda
--------------------
-Apikey: ${newKey.name}
-Tanggal buat: ${formatFullDate(newKey.created_at)}
-Tanggal kadaluarsa: ${expiryText}
--------------------
-Notes:
-${notes}`;
+        apiKeyTextToCopy = `Ini adalah data apikey anda\n-------------------\nApikey: ${newKey.name}\nTanggal buat: ${formatFullDate(newKey.created_at)}\nTanggal kadaluarsa: ${expiryText}\n-------------------\nNotes:\n${notes}`;
         openModal(apiKeySuccessModal);
     };
 
@@ -116,7 +102,6 @@ ${notes}`;
         if (Object.keys(keys).length === 0) { keyListContainer.innerHTML = '<p>Belum ada API Key yang dibuat.</p>'; return; }
         for (const key in keys) {
             const keyData = keys[key];
-            // DIUBAH: Menggunakan formatFullDate untuk menampilkan jam
             const expiry = keyData.expires_at === 'permanent' ? 'Permanen' : `Kadaluwarsa: ${formatFullDate(keyData.expires_at)}`;
             const item = document.createElement('div');
             item.className = 'key-item';
@@ -124,7 +109,7 @@ ${notes}`;
             keyListContainer.appendChild(item);
         }
     };
-
+    
     const renderProjects = (projects) => {
         modalBody.innerHTML = '';
         if (projects.length === 0) { modalBody.innerHTML = '<p>Tidak ada proyek/repositori yang ditemukan.</p>'; return; }
@@ -144,7 +129,6 @@ ${notes}`;
         cfNameserverList.innerHTML = data.nameservers.map(ns => `<li class="nameserver-item"><span>${ns}</span><button class="copy-ns-btn" data-ns="${ns}">Copy</button></li>`).join('');
         openModal(cfSuccessModal);
     };
-
     const setupBulkDeleteControls = (container, listType, context) => {
         const selectAllCheckbox = container.querySelector('.select-all-checkbox');
         const checkboxes = container.querySelectorAll('.item-checkbox');
@@ -194,7 +178,6 @@ ${notes}`;
             }
         });
     };
-
     const renderCloudflareZones = (zones) => {
         cloudflareModalTitle.textContent = 'Manajemen Zona Cloudflare';
         let listHtml = zones.map(zone => `
@@ -222,7 +205,6 @@ ${notes}`;
             <ul class="list-item-container">${zones.length > 0 ? listHtml : '<li>Tidak ada zona ditemukan.</li>'}</ul>`;
         setupBulkDeleteControls(cloudflareModalBody, 'zones');
     };
-
     const renderDnsRecords = (records, zoneId, zoneName) => {
         cloudflareModalTitle.textContent = `Record DNS untuk ${zoneName}`;
         let listHtml = records.map(rec => {
@@ -247,7 +229,6 @@ ${notes}`;
         cloudflareModalBody.querySelector('#cloudflare-modal-back-btn').onclick = () => manageDomainsBtn.click();
         setupBulkDeleteControls(cloudflareModalBody, 'dns', { zoneId, zoneName });
     };
-
     const showDnsRecordsView = async (zoneId, zoneName) => {
         cloudflareModalBody.innerHTML = `<p>Memuat record DNS untuk ${zoneName}...</p>`;
         try {
@@ -259,11 +240,29 @@ ${notes}`;
         }
     };
     
+    // --- FUNGSI BARU UNTUK PENGATURAN ---
+    const loadSettings = async () => {
+        try {
+            const res = await callApi('getSettings');
+            waInput.value = res.whatsappNumber;
+            normalPriceInput.value = res.normalPrice;
+            discountPriceInput.value = res.discountPrice;
+            if (res.discountEndDate) {
+                const date = new Date(res.discountEndDate);
+                date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+                discountDateInput.value = date.toISOString().slice(0, 16);
+            }
+        } catch (error) {
+            showNotification(error.message, 'error');
+        }
+    };
+    
     // === Fungsi Utama & Event Listener ===
     const showAdminPanel = (keys) => {
         loginScreen.style.display = 'none';
         adminPanel.style.display = 'block';
         renderApiKeys(keys);
+        loadSettings(); // Memuat pengaturan setelah login berhasil
     };
 
     loginBtn.addEventListener('click', async () => {
@@ -288,7 +287,6 @@ ${notes}`;
             if (localStorage.getItem('adminPassword')) {
                 const keys = await callApi('getApiKeys');
                 showAdminPanel(keys);
-                showNotification('Login berhasil!', 'success');
             } else {
                 loginScreen.style.display = 'block';
             }
@@ -299,6 +297,35 @@ ${notes}`;
             loadingOverlay.classList.add('hidden');
         }
     };
+
+    settingsForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const button = e.target.querySelector('button');
+        button.textContent = 'Menyimpan...'; button.disabled = true;
+
+        const data = {
+            whatsappNumber: waInput.value.trim(),
+            normalPrice: parseInt(normalPriceInput.value, 10),
+            discountPrice: parseInt(discountPriceInput.value, 10),
+            discountEndDate: discountDateInput.value ? new Date(discountDateInput.value).toISOString() : null
+        };
+        try {
+            const res = await callApi('updateSettings', data);
+            showNotification(res.message, 'success');
+        } catch (error) {
+            showNotification(error.message, 'error');
+        } finally {
+            button.textContent = 'Simpan Pengaturan'; button.disabled = false;
+        }
+    });
+
+    logoutBtn.addEventListener('click', () => {
+        localStorage.removeItem('adminPassword');
+        showNotification('Anda telah logout.', 'success');
+        setTimeout(() => {
+            window.location.reload();
+        }, 1500);
+    });
 
     document.getElementById('create-key-form').addEventListener('submit', async (e) => {
         e.preventDefault();

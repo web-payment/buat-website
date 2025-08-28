@@ -119,13 +119,35 @@
 <body>
     <div id="loading-overlay" class="loading-overlay"><i class="fas fa-shield-alt loading-logo"></i><p>Memuat Panel Admin...</p></div>
     <div id="notification-container" class="notification-container"></div>
+    
     <div id="login-screen" class="admin-card" style="display: none;">
         <h1><i class="fas fa-lock"></i> Admin Login</h1>
         <div class="form-group"><label for="admin-password">Password Admin</label><input type="password" id="admin-password" placeholder="••••••••••"></div>
         <button id="login-btn" class="full-width">Masuk</button>
         <a href="index.html" class="back-link">Kembali ke Halaman Utama</a>
     </div>
+
     <div id="admin-panel" class="admin-card" style="display: none;">
+        <div class="section-header"><h2><i class="fas fa-store"></i> Pengaturan Harga & Kontak</h2></div>
+        <form id="settings-form">
+            <div class="form-group">
+                <label for="whatsapp-number">Nomor WhatsApp (Format: 628xxxxxxxx)</label>
+                <input type="text" id="whatsapp-number" placeholder="6281234567890">
+            </div>
+            <div class="form-group">
+                <label for="normal-price">Harga Normal (contoh: 50000)</label>
+                <input type="number" id="normal-price" placeholder="50000">
+            </div>
+            <div class="form-group">
+                <label for="discount-price">Harga Diskon (contoh: 25000)</label>
+                <input type="number" id="discount-price" placeholder="25000">
+            </div>
+            <div class="form-group">
+                <label for="discount-end-date">Tanggal Berakhir Diskon</label>
+                <input type="datetime-local" id="discount-end-date">
+            </div>
+            <button type="submit" class="full-width">Simpan Pengaturan</button>
+        </form>
         <div class="section-header"><h2><i class="fas fa-key"></i> Buat API Key Baru</h2></div>
         <form id="create-key-form">
             <div class="form-group"><label for="new-apikey-name">Nama Key</label><input type="text" id="new-apikey-name" placeholder="Contoh: KunciPremium-Andi" required></div>
@@ -133,14 +155,23 @@
             <div class="permanent-toggle form-group"><input type="checkbox" id="permanent-key" style="width: auto;"><label for="permanent-key" style="margin: 0;">Buat Jadi Permanen</label></div>
             <button type="submit" class="full-width">Buat Kunci</button>
         </form>
+
         <div class="section-header"><h2><i class="fas fa-list-ul"></i> Daftar API Key Aktif</h2></div>
         <div class="api-key-list" id="api-key-list-container"></div>
+        
         <div class="section-header"><h2><i class="fab fa-github"></i> Manajemen Proyek</h2></div>
         <button id="manage-projects-btn" class="full-width"><i class="fas fa-tasks"></i> Tampilkan & Kelola Proyek</button>
+        
         <div class="section-header"><h2><i class="fas fa-cloud"></i> Manajemen Domain Cloudflare</h2></div>
         <button id="manage-domains-btn" class="full-width"><i class="fas fa-network-wired"></i> Kelola Domain & DNS</button>
+
+        <button id="logout-btn" class="full-width" style="background-color: var(--error-color); margin-top: 30px;">
+            <i class="fas fa-sign-out-alt"></i> Logout
+        </button>
     </div>
+
     <div id="theme-toggle" class="theme-toggle"><i class="fas fa-moon"></i></div>
+    
     <div id="project-modal" class="modal-overlay">
         <div class="modal-content">
             <button class="modal-close">&times;</button>

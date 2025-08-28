@@ -21,15 +21,16 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: 'Poppins', sans-serif; background-color: var(--bg-color); color: var(--text-color);
-            display: flex; justify-content: center; align-items: flex-start; min-height: 100vh;
+            display: flex; justify-content: center; align-items: center; min-height: 100vh;
             padding: 20px; transition: background-color 0.3s, color 0.3s;
         }
-        .main-container { width: 100%; max-width: 600px; padding-top: 5vh; }
+        .main-container { width: 100%; max-width: 600px; animation: fadeIn 0.5s ease-out; }
         .creator-card {
             background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 20px;
             padding: 30px 35px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1); margin-bottom: 30px;
         }
         h1 { font-size: 2em; font-weight: 700; text-align: center; }
+        h2 { text-align: center; font-weight: 600; margin-bottom: 20px; }
         p { color: var(--text-muted); font-size: 1em; text-align: center; }
         .form-group { margin-bottom: 25px; }
         label { display: block; font-weight: 500; font-size: 0.9em; margin-bottom: 8px; }
@@ -43,21 +44,20 @@
         #subdomain-name { border-top-right-radius: 0; border-bottom-right-radius: 0; }
         #file-upload-label { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 14px; text-align: center; cursor: pointer; border: 2px dashed var(--border-color); border-radius: 12px; }
         #website-file { display: none; }
-        button[type="submit"] {
+        button { cursor: pointer; font-family: inherit; }
+        .button-primary {
             width: 100%; padding: 16px; background-color: var(--primary-color); color: white; border: none;
-            border-radius: 12px; font-size: 1.1em; font-weight: 600; cursor: pointer;
+            border-radius: 12px; font-size: 1.1em; font-weight: 600; 
             display: flex; justify-content: center; align-items: center; gap: 10px; transition: background-color 0.2s;
         }
-        button:disabled { background-color: var(--text-muted); cursor: not-allowed; }
+        .button-primary:disabled { background-color: var(--text-muted); cursor: not-allowed; }
         .spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite; }
-        @keyframes spin { to { transform: rotate(360deg); } }
-        #created-sites-container { display: none; padding: 25px; }
+        
+        /* Riwayat & Modal */
+        #created-sites-container { display: none; }
         .sites-list-item { background: var(--bg-color); border-radius: 12px; padding: 15px; margin-bottom: 10px; cursor: pointer; transition: background-color 0.2s, transform 0.2s; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border-color); position: relative; }
         .sites-list-item:hover { transform: translateY(-3px); }
-        .site-info { padding-right: 30px; }
         .site-info h3 { margin: 0 0 5px; font-size: 1.1em; color: var(--text-color);}
-        .delete-site-btn { position: absolute; top: 5px; right: 5px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.1em; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; border-radius: 50%; }
-        .delete-site-btn:hover { color: var(--error-color); background-color: var(--border-color); }
         .status { padding: 4px 10px; border-radius: 20px; font-size: 0.8em; font-weight: 500; color: white;}
         .status.pending { background-color: var(--pending-color); }
         .status.success { background-color: var(--success-color); }
@@ -65,33 +65,48 @@
         .modal-overlay.show { opacity: 1; visibility: visible; transition-delay: 0s; }
         .modal-content { background: var(--card-bg); border-radius: 20px; padding: 25px; width: 90%; max-width: 500px; transform: scale(0.9); transition: transform 0.3s; }
         .modal-header { text-align: center; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 20px; }
-        .modal-header i { font-size: 2.5em; color: var(--success-color); }
-        .modal-header h2 { margin: 10px 0 5px; }
-        .domain-item { display: flex; justify-content: space-between; align-items: center; margin-bottom: 15px; }
-        .domain-item a { color: var(--primary-color); text-decoration: none; word-break: break-all; }
-        .check-status-btn { background: none; border: 1px solid var(--primary-color); color: var(--primary-color); padding: 5px 12px; font-size: 0.8em; font-weight: 500; border-radius: 20px; width: auto; }
+        .modal-header i { font-size: 2.5em; }
+        #modal-close-btn { width: auto; padding-left: 40px; padding-right: 40px; margin-top: 10px;}
+        
+        /* Toast & Loading */
         #toast-notification { position: fixed; top: 20px; left: 50%; transform: translate(-50%, -150%); z-index: 9999; background-color: rgba(44, 44, 46, 0.85); color: #fff; padding: 12px 20px; border-radius: 25px; font-size: 0.9em; font-weight: 500; box-shadow: 0 4px 15px rgba(0,0,0,0.2); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); opacity: 0; transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.5s ease; display: flex; align-items: center; gap: 10px; pointer-events: none; }
         #toast-notification.show { opacity: 1; transform: translate(-50%, 0); }
         #toast-notification.success { background-color: rgba(50, 215, 75, 0.85); }
         #toast-notification.error { background-color: rgba(255, 69, 58, 0.85); }
-        .theme-toggle { position: fixed; bottom: 20px; right: 20px; width: 50px; height: 50px; background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 1.2em; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 1001; }
         .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--bg-color); z-index: 10000; display: flex; justify-content: center; align-items: center; opacity: 1; transition: opacity 0.5s ease; }
         .loading-overlay.hidden { opacity: 0; pointer-events: none; }
         .loading-logo { font-size: 2.5em; color: var(--primary-color); animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0%, 100% { transform: scale(1); } 50% { transform: scale(1.1); } }
-        #confirmation-modal .modal-content { max-width: 320px; padding: 0; text-align: center; }
-        #confirmation-modal h3 { font-size: 1.1em; padding: 20px 20px 5px; }
-        #confirmation-modal p { font-size: 0.9em; padding: 0 20px 20px; }
-        .confirmation-buttons { display: flex; border-top: 1px solid var(--border-color); }
-        .confirmation-buttons button { flex: 1; border-radius: 0; background: none; font-size: 1.05em; border: none; padding: 14px; }
-        #confirm-btn-no { color: var(--primary-color); border-right: 1px solid var(--border-color); }
-        #confirm-btn-yes { color: var(--error-color); font-weight: 600; }
         a.admin-link { display: block; text-align: center; margin-top: 20px; color: var(--text-muted); font-size: 0.9em; text-decoration: none; }
-        a.admin-link:hover { color: var(--primary-color); }
+        .theme-toggle { position: fixed; bottom: 20px; right: 20px; width: 50px; height: 50px; background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 1.2em; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 1001; }
+        
+        /* FITUR BARU: HARGA & PANDUAN */
+        .upload-guide-link { text-align: center; margin-top: -15px; margin-bottom: 25px; }
+        .upload-guide-link a { color: var(--primary-color); text-decoration: none; font-size: 0.9em; }
+        .pricing-section .creator-card { padding-top: 40px; }
+        .discount-banner { background-color: var(--error-color); color: white; padding: 15px; border-radius: 12px; text-align: center; margin-bottom: 25px; }
+        .discount-banner h3 { margin: 0 0 5px; }
+        #countdown-timer { font-size: 1.2em; font-weight: 600; letter-spacing: 2px; }
+        .pricing-grid { display: flex; flex-direction: column; gap: 20px; }
+        .price-card { background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: 15px; padding: 25px; text-align: center; }
+        .price-card h3 { font-size: 1.3em; margin-bottom: 10px; }
+        .price-tag { margin: 15px 0; }
+        .price-tag .normal-price { text-decoration: line-through; color: var(--text-muted); font-size: 1.1em; }
+        .price-tag .final-price { font-size: 2.2em; font-weight: 700; color: var(--primary-color); }
+        .guide-content ul { list-style: none; padding-left: 0; }
+        .guide-content li { display: flex; align-items: flex-start; gap: 15px; margin-bottom: 15px; text-align: left;}
+        .guide-content i { color: var(--primary-color); font-size: 1.2em; margin-top: 4px; }
+        
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
+        @keyframes pulse { to { transform: rotate(360deg); } }
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        @media (max-width: 640px) {
+            body { padding: 10px; align-items: flex-start; }
+            .creator-card { padding: 20px; }
+        }
     </style>
 </head>
 <body>
-
     <div id="loading-overlay" class="loading-overlay"><i class="fas fa-bolt loading-logo"></i></div>
     <div id="toast-notification"></div>
 
@@ -114,67 +129,88 @@
                     <label for="website-file" id="file-upload-label"><i class="fas fa-cloud-upload-alt"></i><span id="file-name-span">Pilih file...</span></label>
                     <input type="file" id="website-file" accept=".zip,.html" required>
                 </div>
+                <div class="upload-guide-link">
+                    <a href="#" id="show-guide-link">Lihat Panduan Upload</a>
+                </div>
                 <div class="form-group">
                     <label for="user-api-key">API Key</label>
                     <input type="password" id="user-api-key" placeholder="••••••••••••••••" required>
                 </div>
-                <button type="submit" id="create-btn"><span id="btn-text">Buat Website</span></button>
+                <button type="submit" id="create-btn" class="button-primary"><span id="btn-text">Buat Website</span></button>
             </form>
         </div>
+
+        <div class="pricing-section">
+            <div class="creator-card">
+                <h2>Belum Punya API Key?</h2>
+                <div id="discount-banner" class="discount-banner" style="display: none;">
+                    <h3>🔥 PROMO TERBATAS! 🔥</h3>
+                    <p>Diskon akan berakhir dalam:</p>
+                    <div id="countdown-timer">00:00:00:00</div>
+                </div>
+                <div class="pricing-grid">
+                    <div class="price-card">
+                        <h3>API Key Permanen</h3>
+                        <div class="price-tag">
+                            <div class="normal-price" id="normal-price-display">Rp 0</div>
+                            <div class="final-price" id="final-price-display">Rp 0</div>
+                        </div>
+                        <button class="button-primary" id="buy-button">
+                            <i class="fab fa-whatsapp"></i> Beli via WhatsApp
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div id="created-sites-container" class="creator-card">
             <h2><i class="fas fa-list"></i> Riwayat Website Anda</h2>
             <div id="sites-list" style="margin-top: 20px;"></div>
         </div>
-        <a href="admin-keys.html" class="admin-link">Masuk Panel Admin</a>
+        <a href="admin.html" class="admin-link">Masuk Panel Admin</a>
     </div>
     
-    <div id="details-modal" class="modal-overlay">
+    <div id="guide-modal" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
-                <i class="fas fa-check-circle"></i>
-                <h2>Berhasil Dibuat!</h2>
-                <p>Website Anda sedang disiapkan. Koneksi domain kustom butuh 5-15 menit.</p>
+                <i class="fas fa-info-circle" style="color: var(--primary-color);"></i>
+                <h2>Panduan Upload</h2>
             </div>
-            <div class="modal-body">
-                <div class="domain-item">
-                    <div>
-                        <p style="margin: 0;"><strong>Domain Vercel (Langsung Aktif)</strong></p>
-                        <a href="#" id="modal-vercel-url" target="_blank">memuat...</a>
-                    </div>
-                    <span class="status success">Aktif</span>
-                </div>
-                <div class="domain-item">
-                    <div>
-                        <p style="margin: 0;"><strong>Domain Kustom Anda</strong></p>
-                        <a href="#" id="modal-custom-url" target="_blank">memuat...</a>
-                    </div>
-                    <button id="modal-check-status-btn" class="check-status-btn">
-                        <i class="fas fa-sync-alt"></i>
-                        <span id="modal-status-text">Cek Status</span>
-                    </button>
-                </div>
+            <div class="guide-content">
+                 <ul>
+                    <li>
+                        <i class="fas fa-file-archive"></i>
+                        <div>
+                            <strong>Batas Ukuran File: 4.5 MB</strong>
+                            <p>Karena limit dari Vercel (hosting), pastikan file .zip Anda tidak lebih dari 4.5 MB.</p>
+                        </div>
+                    </li>
+                    <li>
+                        <i class="fas fa-user-secret"></i>
+                        <div>
+                            <strong>Dilarang Mengunggah Data Sensitif</strong>
+                            <p>Jangan pernah menaruh API Key, password, atau data rahasia lain di dalam file. GitHub akan otomatis menolaknya.</p>
+                        </div>
+                    </li>
+                    <li>
+                        <i class="fas fa-gavel"></i>
+                        <div>
+                            <strong>Konten Ilegal Dilarang</strong>
+                            <p>Dilarang keras mengunggah konten yang melanggar hukum, SARA, perjudian, dan sejenisnya.</p>
+                        </div>
+                    </li>
+                </ul>
             </div>
-            <div class="modal-footer" style="margin-top: 20px; text-align: center;">
-                <button id="modal-close-btn" style="background-color: var(--primary-color); width: 100%;">Tutup</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="confirmation-modal" class="modal-overlay">
-        <div class="modal-content">
-            <h3 id="confirmation-modal-title">Hapus Riwayat?</h3>
-            <p id="confirmation-modal-message">Tindakan ini hanya akan menghapus riwayat dari browser Anda.</p>
-            <div class="confirmation-buttons">
-                <button id="confirm-btn-no">Batal</button>
-                <button id="confirm-btn-yes">Hapus</button>
+            <div style="text-align: center;">
+                 <button id="guide-close-btn" class="button-primary">Saya Mengerti</button>
             </div>
         </div>
     </div>
 
-    <div id="theme-toggle" class="theme-toggle">
-        <i class="fas fa-moon"></i>
-    </div>
+    <div id="details-modal" class="modal-overlay">
+        </div>
 
+    <div id="theme-toggle" class="theme-toggle"><i class="fas fa-moon"></i></div>
     <script src="script.js"></script>
 </body>
 </html>
