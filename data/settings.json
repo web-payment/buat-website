@@ -9,6 +9,12 @@
       "name": "Paket 1 hari",
       "price": "1000",
       "description": ""
+    },
+    {
+      "id": "new_1756408101337",
+      "name": "Paket 7 hari",
+      "price": "3999",
+      "description": ""
     }
   ]
 }
