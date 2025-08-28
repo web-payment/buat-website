@@ -30,7 +30,7 @@
         }
         .admin-card {
             width: 100%; max-width: 800px; background: var(--card-bg); border: 1px solid var(--border-color);
-            border-radius: 20px; box-shadow: var(--shadow); overflow: hidden;
+            border-radius: 20px; box-shadow: var(--shadow);
         }
         .card-content { padding: 30px; }
         h1, h2 { font-weight: 600; }
@@ -68,37 +68,77 @@
         .notification.success { background-color: var(--success-color); }
         .notification.error { background-color: var(--error-color); }
         @keyframes slideInDown { to { opacity: 1; transform: translateY(0); } }
-        
-        .tabs { display: flex; background-color: var(--bg-color); border-bottom: 1px solid var(--border-color); }
-        .tab-button { flex: 1; padding: 15px; background: none; border: none; color: var(--text-muted); font-weight: 500; font-size: 0.95em; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s; }
-        .tab-button:hover { background-color: var(--border-color); }
-        .tab-button.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
-        .tab-content { display: none; }
-        .tab-content.active { display: block; animation: fadeIn 0.4s; }
-        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-
-        .price-tier-item { background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; margin-bottom: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; position: relative; }
-        .price-tier-item .form-group { margin: 0; }
-        .price-tier-item .description-group { grid-column: 1 / -1; }
-        .delete-tier-btn { position: absolute; top: 10px; right: 10px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.2em; }
-        
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9998; display: none; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
         .modal-content { background: var(--card-bg); padding: 25px; border-radius: 20px; width: 90%; max-width: 700px; position: relative; max-height: 85vh; display: flex; flex-direction: column; box-shadow: var(--shadow); }
         .modal-close { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 1.5em; cursor: pointer; color: var(--text-muted); z-index: 10; }
+        .modal-header { margin-bottom: 20px; flex-shrink: 0; }
         #modal-body, #cloudflare-modal-body { flex-grow: 1; overflow-y: auto; min-height: 0; }
+        .repo-item { padding: 15px; background: var(--bg-color); border-radius: 8px; margin-bottom: 10px; border: 1px solid var(--border-color); display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 10px; transition: opacity 0.3s; }
+        .repo-info a { color: var(--primary-color); text-decoration: none; font-weight: 600; display: block; }
+        .repo-info span { font-size: 0.8em; color: var(--text-muted); }
+        .repo-actions button { font-size: 0.8em; padding: 6px 10px; }
+        .repo-actions .delete-vercel-btn { background-color: var(--warn-color); }
+        #confirmation-modal { z-index: 9999; }
+        #confirmation-modal .modal-content, #apikey-success-modal .modal-content, #cf-success-modal .modal-content { display: block; max-height: none; }
+        #confirmation-modal .modal-content { max-width: 320px; text-align: center; padding: 0; overflow: hidden; }
+        #confirmation-modal-title { font-size: 1.1em; font-weight: 600; padding: 20px 20px 5px; }
+        #confirmation-modal-message { font-size: 0.9em; padding: 0 20px 20px; color: var(--text-muted); white-space: pre-wrap; }
+        .confirmation-buttons { display: flex; border-top: 1px solid var(--border-color); }
+        .confirmation-buttons button { flex: 1; padding: 14px; border-radius: 0; background: none; font-size: 1.05em; font-weight: 500; }
+        #confirm-btn-no { color: var(--primary-color); border-right: 1px solid var(--border-color); }
+        #confirm-btn-yes { color: var(--error-color); font-weight: 600; }
+        #apikey-success-modal .modal-content { max-width: 380px; text-align: center; padding: 0; overflow: hidden; }
+        #apikey-success-modal h3 { font-size: 1.2em; font-weight: 600; padding: 25px 20px 10px; }
+        .apikey-details { padding: 0 25px; margin-bottom: 20px; text-align: left; }
+        .detail-item { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px solid var(--border-color); font-size: 0.9em; }
+        .detail-item:last-child { border-bottom: none; }
+        .detail-label { font-weight: 500; color: var(--text-muted); }
+        .detail-value { font-weight: 500; background: var(--bg-color); padding: 2px 6px; border-radius: 4px; }
+        .apikey-info-box { background-color: var(--bg-color); border: 1px solid var(--border-color); padding: 15px; margin: 0 25px 25px; border-radius: 10px; text-align: center; font-size: 0.85em; color: var(--text-muted); }
+        .apikey-info-box i { color: var(--primary-color); margin-right: 8px; }
+        .apikey-success-footer { display: flex; border-top: 1px solid var(--border-color); }
+        .apikey-success-footer button { flex: 1; padding: 15px; border-radius: 0; background: none; font-size: 1.05em; font-weight: 600; color: var(--primary-color); }
+        #apikey-copy-btn { border-right: 1px solid var(--border-color); color: var(--primary-color); font-weight: 500; }
+        #apikey-copy-btn i { margin-right: 6px; }
         .list-item-container { list-style-type: none; padding: 0; margin: 0; }
         .list-item { padding: 10px 15px; background: var(--bg-color); border-radius: 8px; margin-bottom: 10px; border: 1px solid var(--border-color); display: flex; align-items: center; gap: 15px; }
+        .list-item input[type="checkbox"] { width: 18px; height: 18px; flex-shrink: 0; }
         .item-info { flex-grow: 1; min-width: 0; }
         .item-info strong { font-weight: 600; display: block; }
         .item-info span { font-size: 0.85em; color: var(--text-muted); font-family: monospace; word-break: break-all; }
         .list-toolbar { display: flex; align-items: center; gap: 10px; padding-bottom: 15px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); flex-shrink: 0; flex-wrap: wrap; }
+        .add-domain-form, .search-form { display: flex; gap: 10px; flex-grow: 1; }
+        .add-domain-form input, .search-form input { flex-grow: 1; }
+        #cloudflare-modal-back-btn { background-color: var(--text-muted); }
+        .bulk-delete-btn { background-color: var(--error-color); display: none; margin-left: auto; }
+        #cf-success-modal .modal-content { max-width: 420px; text-align: center; padding: 0; overflow: hidden; }
+        .nameserver-list { list-style-type: none; padding: 0; margin: 0 25px 20px; }
+        .nameserver-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background-color: var(--bg-color); border-radius: 8px; margin-bottom: 8px; font-family: monospace; }
+        .copy-ns-btn { font-size: 0.8em; padding: 4px 8px; background-color: var(--text-muted); }
+
+        /* Layout Tab Baru */
+        .admin-card .tabs { display: flex; background-color: var(--bg-color); border-bottom: 1px solid var(--border-color); }
+        .admin-card .tab-button { flex: 1; padding: 15px; background: none; border: none; color: var(--text-muted); font-weight: 500; font-size: 0.95em; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s; }
+        .admin-card .tab-button:hover { background-color: var(--border-color); }
+        .admin-card .tab-button.active { color: var(--primary-color); border-bottom-color: var(--primary-color); }
+        .admin-card .tab-content { display: none; }
+        .admin-card .tab-content.active { display: block; animation: fadeIn 0.4s; }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+
+        /* Pengaturan Harga Baru */
+        .price-tier-item { background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; margin-bottom: 15px; position: relative; }
+        .price-tier-item .form-group { margin-bottom: 15px; }
+        .delete-tier-btn { position: absolute; top: 10px; right: 10px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.2em; }
+        .price-tier-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+        .full-width-group { grid-column: 1 / -1; }
+
     </style>
 </head>
 <body>
     <div id="loading-overlay" class="loading-overlay"><i class="fas fa-shield-alt loading-logo"></i><p>Memuat Panel Admin...</p></div>
     <div id="notification-container" class="notification-container"></div>
     
-    <div id="login-screen" class="admin-card" style="display: none; max-width: 400px;">
+    <div id="login-screen" class="admin-card" style="display: block; max-width: 450px;">
         <div class="card-content">
             <h1><i class="fas fa-lock"></i> Admin Login</h1>
             <div class="form-group"><label for="admin-password">Password Admin</label><input type="password" id="admin-password" placeholder="••••••••••"></div>
@@ -109,63 +149,104 @@
 
     <div id="admin-panel" class="admin-card">
         <nav class="tabs">
-            <button class="tab-button active" data-tab="tab-keys"><i class="fas fa-key"></i> Buat & Lihat API Key</button>
+            <button class="tab-button active" data-tab="tab-apikeys"><i class="fas fa-key"></i> API Keys & Proyek</button>
             <button class="tab-button" data-tab="tab-pricing"><i class="fas fa-tags"></i> Atur Harga</button>
             <button class="tab-button" data-tab="tab-cloudflare"><i class="fas fa-cloud"></i> Cloudflare</button>
         </nav>
-
         <div class="card-content">
-            <div id="tab-keys" class="tab-content active">
-                <div class="section-header"><h2><i class="fas fa-plus-circle"></i> Buat API Key Baru</h2></div>
+            <div id="tab-apikeys" class="tab-content active">
+                <div class="section-header" style="margin-top: 0;"><h2><i class="fas fa-key"></i> Buat API Key Baru</h2></div>
                 <form id="create-key-form">
                     <div class="form-group"><label for="new-apikey-name">Nama Key</label><input type="text" id="new-apikey-name" placeholder="Contoh: KunciPremium-Andi" required></div>
                     <div id="duration-section"><label>Durasi Aktif</label><div class="duration-group"><input type="number" id="new-apikey-duration" value="7" style="flex-grow: 1;"><select id="new-apikey-unit" style="flex-grow: 2;"><option value="days">Hari</option><option value="weeks">Minggu</option><option value="months">Bulan</option></select></div></div>
                     <div class="permanent-toggle form-group"><input type="checkbox" id="permanent-key" style="width: auto;"><label for="permanent-key" style="margin: 0;">Buat Jadi Permanen</label></div>
                     <button type="submit" class="full-width">Buat Kunci</button>
                 </form>
-
                 <div class="section-header"><h2><i class="fas fa-list-ul"></i> Daftar API Key Aktif</h2></div>
                 <div class="api-key-list" id="api-key-list-container"></div>
-
                 <div class="section-header"><h2><i class="fab fa-github"></i> Manajemen Proyek</h2></div>
                 <button id="manage-projects-btn" class="full-width"><i class="fas fa-tasks"></i> Tampilkan & Kelola Proyek</button>
             </div>
 
             <div id="tab-pricing" class="tab-content">
-                <div class="section-header"><h2><i class="fas fa-store"></i> Pengaturan Harga & Kontak</h2></div>
                 <form id="settings-form">
+                    <div class="section-header" style="margin-top: 0;"><h2><i class="fas fa-store"></i> Pengaturan Harga & Kontak</h2></div>
                     <div class="form-group">
                         <label for="whatsapp-number">Nomor WhatsApp (Format: 628xxxxxxxx)</label>
                         <input type="text" id="whatsapp-number" placeholder="6281234567890">
                     </div>
                     <hr style="border: 1px solid var(--border-color); margin: 25px 0;">
-                    <div id="pricing-tiers-container">
-                        </div>
+                    <div id="pricing-tiers-container"></div>
                     <button type="button" id="add-tier-btn" class="full-width" style="margin-bottom: 15px; background-color: var(--text-muted);"><i class="fas fa-plus"></i> Tambah Paket Harga</button>
-                    <button type="submit" class="full-width">Simpan Semua Pengaturan</button>
+                    <button type="submit" class="full-width">Simpan Pengaturan</button>
                 </form>
             </div>
-            
+
             <div id="tab-cloudflare" class="tab-content">
-                <div class="section-header"><h2><i class="fas fa-network-wired"></i> Manajemen Domain & DNS</h2></div>
+                 <div class="section-header" style="margin-top:0;"><h2><i class="fas fa-network-wired"></i> Manajemen Domain Cloudflare</h2></div>
                 <p style="text-align: center; color: var(--text-muted); margin-bottom: 20px;">Kelola semua domain Anda yang terhubung dengan akun Cloudflare di sini.</p>
                 <button id="manage-domains-btn" class="full-width">Buka Panel Cloudflare</button>
             </div>
 
-            <button id="logout-btn" class="full-width" style="background-color: var(--error-color); margin-top: 30px;">
-                <i class="fas fa-sign-out-alt"></i> Logout
-            </button>
+            <button id="logout-btn" class="full-width" style="background-color: var(--error-color); margin-top: 30px;"><i class="fas fa-sign-out-alt"></i> Logout</button>
         </div>
     </div>
 
     <div id="theme-toggle" class="theme-toggle"><i class="fas fa-moon"></i></div>
     
-    <div id="project-modal" class="modal-overlay"></div>
-    <div id="confirmation-modal" class="modal-overlay"></div>
-    <div id="apikey-success-modal" class="modal-overlay"></div>
-    <div id="cloudflare-modal" class="modal-overlay"></div>
-    <div id="cf-success-modal" class="modal-overlay"></div>
-
+    <div id="project-modal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close">&times;</button>
+            <div class="modal-header"><h2 id="modal-title">Daftar Repositori & Proyek</h2></div>
+            <div id="modal-body"></div>
+        </div>
+    </div>
+    <div id="confirmation-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3 id="confirmation-modal-title">Konfirmasi Tindakan</h3>
+            <p id="confirmation-modal-message">Apakah Anda yakin?</p>
+            <div class="confirmation-buttons">
+                <button id="confirm-btn-no">Batal</button>
+                <button id="confirm-btn-yes">Hapus</button>
+            </div>
+        </div>
+    </div>
+    <div id="apikey-success-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3><i class="fas fa-check-circle" style="color: var(--success-color);"></i> Kunci Berhasil Dibuat!</h3>
+            <div class="apikey-details" id="apikey-details-container"></div>
+            <div class="apikey-info-box">
+                <p><i class="fas fa-info-circle"></i> Harap salin dan simpan Kunci API Anda di tempat yang aman. Anda tidak akan bisa melihatnya lagi setelah ini.</p>
+            </div>
+            <div class="apikey-success-footer">
+                <button id="apikey-copy-btn"><i class="fas fa-copy"></i> Copy</button>
+                <button id="apikey-success-ok-btn">OK</button>
+            </div>
+        </div>
+    </div>
+    <div id="cloudflare-modal" class="modal-overlay">
+        <div class="modal-content">
+            <button class="modal-close">&times;</button>
+            <div class="modal-header"><h2 id="cloudflare-modal-title">Manajemen Domain</h2></div>
+            <div id="cloudflare-modal-body"></div>
+        </div>
+    </div>
+    <div id="cf-success-modal" class="modal-overlay">
+        <div class="modal-content">
+            <h3><i class="fas fa-check-circle" style="color: var(--success-color);"></i> Domain Ditambahkan!</h3>
+            <div class="apikey-info-box" style="text-align: left;">
+                <p id="cf-success-message"></p>
+            </div>
+            <ul class="nameserver-list" id="cf-nameserver-list"></ul>
+            <div class="apikey-info-box">
+                <p><i class="fas fa-info-circle"></i> Segera perbarui nameserver di registrar domain Anda dengan data di atas.</p>
+            </div>
+            <div class="apikey-success-footer">
+                <button id="cf-success-ok-btn">Selesai</button>
+            </div>
+        </div>
+    </div>
+    
     <script src="admin-keys.js"></script>
 </body>
 </html>
