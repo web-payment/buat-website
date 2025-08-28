@@ -2,5 +2,13 @@
   "whatsappNumber": "",
   "normalPrice": 5000,
   "discountPrice": 25000,
-  "discountEndDate": "2025-08-28T18:23:00.000Z"
+  "discountEndDate": "2025-08-28T18:23:00.000Z",
+  "pricingTiers": [
+    {
+      "id": "new_1756408040483",
+      "name": "Paket 1 hari",
+      "price": "1000",
+      "description": ""
+    }
+  ]
 }
