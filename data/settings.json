@@ -15,6 +15,12 @@
       "name": "Paket 7 hari",
       "price": "3999",
       "description": ""
+    },
+    {
+      "id": "new_1756408132851",
+      "name": "Paket 8 hari",
+      "price": "6000",
+      "description": "Halo"
     }
   ]
 }
