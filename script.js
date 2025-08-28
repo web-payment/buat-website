@@ -14,10 +14,17 @@ document.addEventListener('DOMContentLoaded', () => {
     const themeToggle = document.getElementById('theme-toggle');
     const body = document.body;
     const loadingOverlay = document.getElementById('loading-overlay');
+    const pricingGrid = document.getElementById('pricing-grid');
+
+    // Elemen untuk Modal Panduan
     const showGuideLink = document.getElementById('show-guide-link');
     const guideModal = document.getElementById('guide-modal');
     const guideCloseBtn = document.getElementById('guide-close-btn');
-    const pricingGrid = document.getElementById('pricing-grid');
+
+    // Elemen BARU untuk Modal Harga
+    const showPricingBtn = document.getElementById('show-pricing-btn');
+    const pricingModal = document.getElementById('pricing-modal');
+    const pricingCloseBtn = document.getElementById('pricing-close-btn');
 
     // === Variabel & State ===
     let toastTimeout;
@@ -135,8 +142,6 @@ document.addEventListener('DOMContentLoaded', () => {
             showToast(result.message, result.status === 'success' ? 'success' : 'info');
         } catch (error) {
             showToast(error.message, 'error');
-        } finally {
-            // Re-enable handled by re-rendering modal
         }
     };
     
@@ -213,22 +218,29 @@ document.addEventListener('DOMContentLoaded', () => {
     });
     
     pricingGrid.addEventListener('click', (e) => {
-        if (e.target.classList.contains('buy-button')) {
+        const buyButton = e.target.closest('.buy-button');
+        if (buyButton) {
             const waNumber = settings.whatsappNumber;
             if (!waNumber) {
                 return showToast('Nomor WhatsApp admin belum diatur.', 'error');
             }
-            const packageName = e.target.dataset.packageName;
+            const packageName = buyButton.dataset.packageName;
             const message = encodeURIComponent(`Halo, saya tertarik untuk membeli API Key "${packageName}".`);
             window.open(`https://wa.me/${waNumber}?text=${message}`, '_blank');
         }
     });
 
+    // Event Listener untuk Modal Panduan
     showGuideLink.addEventListener('click', (e) => { e.preventDefault(); guideModal.classList.add('show'); });
     guideCloseBtn.addEventListener('click', () => guideModal.classList.remove('show'));
     guideModal.addEventListener('click', (e) => { if(e.target === guideModal) guideModal.classList.remove('show'); });
-    detailsModalContainer.addEventListener('click', (e) => { if(e.target === detailsModalContainer) detailsModalContainer.classList.remove('show'); });
+    
+    // Event Listener BARU untuk Modal Harga
+    showPricingBtn.addEventListener('click', () => pricingModal.classList.add('show'));
+    pricingCloseBtn.addEventListener('click', () => pricingModal.classList.remove('show'));
+    pricingModal.addEventListener('click', (e) => { if (e.target === pricingModal) pricingModal.classList.remove('show'); });
 
+    detailsModalContainer.addEventListener('click', (e) => { if(e.target === detailsModalContainer) detailsModalContainer.classList.remove('show'); });
 
     creatorForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -260,12 +272,13 @@ document.addEventListener('DOMContentLoaded', () => {
             creatorForm.reset();
             fileNameSpan.textContent = 'Pilih file...';
             showToast('Website berhasil dibuat!', 'success');
-        } catch (error) {
+        } catch (error)
+        {
             showToast(`Gagal: ${error.message}`, 'error');
         } finally {
             createBtn.disabled = false;
             btnText.textContent = 'Buat Website';
-            spinner.remove();
+            if (spinner) spinner.remove();
         }
     });
 
@@ -281,7 +294,6 @@ document.addEventListener('DOMContentLoaded', () => {
             console.error("Gagal inisialisasi halaman:", error);
             showToast(error.message, 'error');
         } finally {
-            // Sembunyikan loading overlay setelah semua proses fetch selesai
             loadingOverlay.classList.add('hidden');
         }
     };

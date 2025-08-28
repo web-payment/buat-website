@@ -69,7 +69,6 @@
         .notification.error { background-color: var(--error-color); }
         @keyframes slideInDown { to { opacity: 1; transform: translateY(0); } }
         
-        /* Layout Tab */
         .tabs { display: flex; background-color: var(--bg-color); border-bottom: 1px solid var(--border-color); }
         .tab-button { flex: 1; padding: 15px; background: none; border: none; color: var(--text-muted); font-weight: 500; font-size: 0.95em; cursor: pointer; border-bottom: 3px solid transparent; transition: all 0.2s; }
         .tab-button:hover { background-color: var(--border-color); }
@@ -78,20 +77,17 @@
         .tab-content.active { display: block; animation: fadeIn 0.4s; }
         @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
 
-        /* Pengaturan Harga */
         .price-tier-item { background: var(--bg-color); border: 1px solid var(--border-color); border-radius: 12px; padding: 20px; margin-bottom: 15px; display: grid; grid-template-columns: 1fr 1fr; gap: 15px; position: relative; }
         .price-tier-item .form-group { margin: 0; }
         .price-tier-item .description-group { grid-column: 1 / -1; }
         .delete-tier-btn { position: absolute; top: 10px; right: 10px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.2em; }
         
-        /* Modal */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9998; display: none; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
         .modal-content { background: var(--card-bg); padding: 25px; border-radius: 20px; width: 90%; max-width: 700px; position: relative; max-height: 85vh; display: flex; flex-direction: column; box-shadow: var(--shadow); }
         .modal-close { position: absolute; top: 15px; right: 15px; background: none; border: none; font-size: 1.5em; cursor: pointer; color: var(--text-muted); z-index: 10; }
         #modal-body, #cloudflare-modal-body { flex-grow: 1; overflow-y: auto; min-height: 0; }
         .list-item-container { list-style-type: none; padding: 0; margin: 0; }
         .list-item { padding: 10px 15px; background: var(--bg-color); border-radius: 8px; margin-bottom: 10px; border: 1px solid var(--border-color); display: flex; align-items: center; gap: 15px; }
-        .list-item input[type="checkbox"] { width: 18px; height: 18px; flex-shrink: 0; }
         .item-info { flex-grow: 1; min-width: 0; }
         .item-info strong { font-weight: 600; display: block; }
         .item-info span { font-size: 0.85em; color: var(--text-muted); font-family: monospace; word-break: break-all; }

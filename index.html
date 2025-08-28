@@ -47,14 +47,14 @@
         button { cursor: pointer; font-family: inherit; }
         .button-primary {
             width: 100%; padding: 16px; background-color: var(--primary-color); color: white; border: none;
-            border-radius: 12px; font-size: 1.1em; font-weight: 600; 
+            border-radius: 12px; font-size: 1.1em; font-weight: 600;
             display: flex; justify-content: center; align-items: center; gap: 10px; transition: background-color 0.2s;
         }
         .button-primary:disabled { background-color: var(--text-muted); cursor: not-allowed; }
         .spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite; }
         
         #created-sites-container { display: none; }
-        .sites-list-item { background: var(--bg-color); border-radius: 12px; padding: 15px; margin-bottom: 10px; cursor: pointer; transition: background-color 0.2s, transform 0.2s; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border-color); position: relative; }
+        .sites-list-item { background: var(--bg-color); border-radius: 12px; padding: 15px; margin-bottom: 10px; cursor: pointer; transition: background-color 0.2s, transform 0.2s; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border-color); }
         .sites-list-item:hover { transform: translateY(-3px); }
         .site-info h3 { margin: 0 0 5px; font-size: 1.1em; color: var(--text-color);}
         .status { padding: 4px 10px; border-radius: 20px; font-size: 0.8em; font-weight: 500; color: white;}
@@ -79,7 +79,6 @@
         
         .upload-guide-link { text-align: center; margin-top: -15px; margin-bottom: 25px; }
         .upload-guide-link a { color: var(--primary-color); text-decoration: none; font-size: 0.9em; }
-        .pricing-section .creator-card { padding-top: 40px; }
         .pricing-grid { display: grid; grid-template-columns: 1fr; gap: 20px; }
         .price-card { background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: 15px; padding: 25px; text-align: center; }
         .price-card h3 { font-size: 1.3em; margin-bottom: 10px; }
@@ -134,19 +133,18 @@
             </form>
         </div>
 
-        <div class="pricing-section">
-            <div class="creator-card">
-                <h2>Belum Punya API Key?</h2>
-                <div class="pricing-grid" id="pricing-grid">
-                    </div>
-            </div>
+        <div class="creator-card" style="padding: 20px;">
+             <button id="show-pricing-btn" class="button-primary" style="font-size: 1em;">
+                <i class="fas fa-tags"></i> Beli / Lihat Harga API Key
+            </button>
         </div>
 
         <div id="created-sites-container" class="creator-card">
             <h2><i class="fas fa-list"></i> Riwayat Website Anda</h2>
             <div id="sites-list" style="margin-top: 20px;"></div>
         </div>
-        <a href="admin.html" class="admin-link">Masuk Panel Admin</a>
+        
+        <a href="admin-keys.html" class="admin-link">Masuk Panel Admin</a>
     </div>
     
     <div id="guide-modal" class="modal-overlay">
@@ -185,6 +183,19 @@
             </div>
         </div>
     </div>
+
+    <div id="pricing-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <i class="fas fa-tags" style="color: var(--primary-color);"></i>
+                <h2>Pilihan API Key</h2>
+            </div>
+            <div class="pricing-grid" id="pricing-grid">
+                </div>
+            <button id="pricing-close-btn" class="button-primary" style="margin-top: 20px; background-color: var(--text-muted);">Tutup</button>
+        </div>
+    </div>
+
 
     <div id="details-modal" class="modal-overlay">
         </div>
