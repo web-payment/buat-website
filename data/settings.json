@@ -8,19 +8,25 @@
       "id": "new_1756408040483",
       "name": "Paket 1 hari",
       "price": "1000",
-      "description": ""
+      "description": "",
+      "isPromo": false,
+      "promoEndDate": null
     },
     {
       "id": "new_1756408101337",
       "name": "Paket 7 hari",
       "price": "3999",
-      "description": ""
+      "description": "",
+      "isPromo": false,
+      "promoEndDate": null
     },
     {
       "id": "new_1756408132851",
       "name": "Paket 8 hari",
-      "price": "6000",
-      "description": "Halo"
+      "price": "1000",
+      "description": "Halo",
+      "isPromo": true,
+      "promoEndDate": "2025-08-28T19:29:00.000Z"
     }
   ]
 }
