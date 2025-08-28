@@ -81,17 +81,34 @@ async function handleGetDomains(req, res) {
         const domainsData = JSON.parse(fs.readFileSync(path.resolve('./data/domains.json'), 'utf-8'));
         return res.status(200).json(Object.keys(domainsData));
     } catch (error) {
+        console.error("Error loading domains:", error);
+        // Pastikan folder /data dan file domains.json ada
+        if (error.code === 'ENOENT') {
+             return res.status(500).json({ message: "File konfigurasi domain tidak ditemukan." });
+        }
         return res.status(500).json({ message: "Gagal memuat daftar domain." });
     }
 }
 
-// --- Logika POST untuk Admin ---
+// --- Logika POST untuk Admin & Publik ---
 async function handleJsonActions(req, res) {
     try {
         const { action, data, adminPassword } = req.body;
-        
+        const SETTINGS_PATH = "data/settings.json";
+        const APIKEYS_PATH = "data/apikeys.json";
+
         // Aksi publik (tidak perlu password)
         switch(action) {
+            case 'getSettings': {
+                const settings = await readJsonFromGithub(SETTINGS_PATH);
+                const defaultSettings = {
+                    whatsappNumber: "",
+                    normalPrice: 50000,
+                    discountPrice: 25000,
+                    discountEndDate: new Date().toISOString()
+                };
+                return res.status(200).json({ ...defaultSettings, ...settings });
+            }
             case 'checkDomainStatus': {
                 const { domain } = data;
                 if (!domain) return res.status(400).json({ message: "Nama domain diperlukan." });
@@ -116,9 +133,14 @@ async function handleJsonActions(req, res) {
         // Aksi admin (perlu password)
         if (adminPassword !== ADMIN_PASSWORD) return res.status(403).json({ message: "Password admin salah."});
 
-        const APIKEYS_PATH = "data/apikeys.json";
-        
         switch (action) {
+            case "updateSettings": {
+                if (!data) return res.status(400).json({ message: "Data pengaturan diperlukan." });
+                const currentSettings = await readJsonFromGithub(SETTINGS_PATH);
+                const newSettings = { ...currentSettings, ...data };
+                await writeJsonToGithub(SETTINGS_PATH, newSettings, "Update app settings");
+                return res.status(200).json({ message: "Pengaturan berhasil disimpan.", settings: newSettings });
+            }
             case "getApiKeys": {
                 const apiKeys = await readJsonFromGithub(APIKEYS_PATH);
                 return res.status(200).json(apiKeys);
@@ -166,30 +188,21 @@ async function handleJsonActions(req, res) {
             }
             case "listProjects": {
                 const { data: githubRepos } = await octokit.repos.listForAuthenticatedUser({ sort: 'created', direction: 'desc' });
-
                 const vercelRes = await fetch(`${VERCEL_API_BASE}/v9/projects${TEAM_QUERY}`, { headers: VERCEL_HEADERS });
                 if (!vercelRes.ok) throw new Error("Gagal mengambil data dari Vercel.");
-                const vercelData = await vercelRes.json();
-                const vercelProjects = vercelData.projects || [];
+                const { projects: vercelProjects = [] } = await vercelRes.json();
 
                 const allProjects = {};
                 githubRepos.forEach(repo => {
-                    allProjects[repo.name] = {
-                        name: repo.name, githubUrl: repo.html_url, isPrivate: repo.private,
-                        hasGithub: true, hasVercel: false 
-                    };
+                    allProjects[repo.name] = { name: repo.name, githubUrl: repo.html_url, isPrivate: repo.private, hasGithub: true, hasVercel: false };
                 });
                 vercelProjects.forEach(proj => {
                     if (allProjects[proj.name]) {
                         allProjects[proj.name].hasVercel = true;
                     } else {
-                        allProjects[proj.name] = {
-                            name: proj.name, githubUrl: null, isPrivate: null,
-                            hasGithub: false, hasVercel: true
-                        };
+                        allProjects[proj.name] = { name: proj.name, githubUrl: null, isPrivate: null, hasGithub: false, hasVercel: true };
                     }
                 });
-                
                 return res.status(200).json(Object.values(allProjects));
             }
             case "deleteRepo": {
@@ -209,9 +222,7 @@ async function handleJsonActions(req, res) {
                 return res.status(200).json({ message: `Proyek Vercel '${projectName}' berhasil dihapus.` });
             }
             case "listAllCloudflareZones": {
-                let allZones = [];
-                let page = 1;
-                let totalPages = 1;
+                let allZones = []; let page = 1; let totalPages;
                 do {
                     const response = await fetch(`https://api.cloudflare.com/client/v4/zones?page=${page}&per_page=50`, { headers: CF_HEADERS });
                     const result = await response.json();
@@ -229,31 +240,21 @@ async function handleJsonActions(req, res) {
                 const zonesResult = await zonesResponse.json();
                 if (!zonesResult.success) throw new Error(zonesResult.errors[0]?.message || "Gagal memverifikasi akun Cloudflare.");
                 if (zonesResult.result.length === 0 && !process.env.CLOUDFLARE_ACCOUNT_ID) {
-                     throw new Error("Tidak dapat menemukan Account ID Cloudflare. Harap tambahkan CLOUDFLARE_ACCOUNT_ID di .env atau pastikan sudah ada minimal 1 domain di akun Anda.");
+                     throw new Error("Tidak dapat menemukan Account ID Cloudflare. Harap tambahkan di .env atau pastikan ada minimal 1 domain di akun Anda.");
                 }
                 const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || zonesResult.result[0].account.id;
                 const createResponse = await fetch(`https://api.cloudflare.com/client/v4/zones`, {
-                    method: 'POST',
-                    headers: CF_HEADERS,
-                    body: JSON.stringify({ name: domainName, account: { id: accountId } })
+                    method: 'POST', headers: CF_HEADERS, body: JSON.stringify({ name: domainName, account: { id: accountId } })
                 });
                 const createResult = await createResponse.json();
-                if (!createResult.success) {
-                    throw new Error(createResult.errors[0]?.message || "Gagal menambahkan domain ke Cloudflare.");
-                }
-                return res.status(200).json({
-                    message: `Domain ${domainName} berhasil ditambahkan.`,
-                    nameservers: createResult.result.name_servers,
-                    domain: createResult.result.name
-                });
+                if (!createResult.success) throw new Error(createResult.errors[0]?.message || "Gagal menambahkan domain ke Cloudflare.");
+                return res.status(200).json({ message: `Domain ${domainName} berhasil ditambahkan.`, nameservers: createResult.result.name_servers, domain: createResult.result.name });
             }
             case "listDnsRecords": {
                 const { zoneId } = data;
                 if (!zoneId) throw new Error("Zone ID diperlukan.");
-                let allRecords = [];
-                let page = 1;
-                let totalPages = 1;
-                 do {
+                let allRecords = []; let page = 1; let totalPages;
+                do {
                     const response = await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records?page=${page}&per_page=100`, { headers: CF_HEADERS });
                     const result = await response.json();
                     if (!result.success) throw new Error("Gagal mengambil data DNS dari Cloudflare.");
@@ -266,21 +267,19 @@ async function handleJsonActions(req, res) {
             case "bulkDeleteDnsRecords": {
                 const { zoneId, recordIds } = data;
                 if (!zoneId || !recordIds || recordIds.length === 0) throw new Error("Data tidak lengkap untuk hapus DNS.");
-                let successCount = 0;
-                for (const recordId of recordIds) {
-                    const response = await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records/${recordId}`, { method: 'DELETE', headers: CF_HEADERS });
-                    if (response.ok) successCount++;
-                }
+                const results = await Promise.all(recordIds.map(recordId => 
+                    fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records/${recordId}`, { method: 'DELETE', headers: CF_HEADERS })
+                ));
+                const successCount = results.filter(r => r.ok).length;
                 return res.status(200).json({ message: `${successCount} dari ${recordIds.length} record DNS berhasil dihapus.` });
             }
             case "bulkDeleteCloudflareZones": {
                 const { zoneIds } = data;
                 if (!zoneIds || zoneIds.length === 0) throw new Error("Tidak ada zona yang dipilih untuk dihapus.");
-                let successCount = 0;
-                for (const zoneId of zoneIds) {
-                    const response = await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}`, { method: 'DELETE', headers: CF_HEADERS });
-                    if (response.ok) successCount++;
-                }
+                const results = await Promise.all(zoneIds.map(zoneId => 
+                    fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}`, { method: 'DELETE', headers: CF_HEADERS })
+                ));
+                const successCount = results.filter(r => r.ok).length;
                 return res.status(200).json({ message: `${successCount} dari ${zoneIds.length} zona berhasil dihapus.` });
             }
             default:
@@ -331,9 +330,15 @@ async function handleCreateWebsite(request, response) {
         } else throw new Error("Format file tidak didukung.");
         
         let uploadRoot = tempDir;
-        const entries = fs.readdirSync(tempDir);
-        if (entries.length === 1 && fs.statSync(path.join(tempDir, entries[0])).isDirectory()) {
-            uploadRoot = path.join(tempDir, entries[0]);
+        if (uploadedFile.mimetype === "application/zip") {
+            const allExtractedFiles = getAllFiles(tempDir, []);
+            const indexPath = allExtractedFiles.find(f => path.basename(f).toLowerCase() === 'index.html');
+
+            if (indexPath) {
+                uploadRoot = path.dirname(indexPath);
+            } else {
+                throw new Error("File index.html tidak dapat ditemukan di dalam file .zip Anda.");
+            }
         }
         
         await octokit.repos.createForAuthenticatedUser({ name: repoName, private: false });
@@ -348,11 +353,11 @@ async function handleCreateWebsite(request, response) {
             });
         }
         
-        const vercelProject = await fetch(`${VERCEL_API_BASE}/v9/projects${TEAM_QUERY}`, {
+        const vercelProjectRes = await fetch(`${VERCEL_API_BASE}/v9/projects${TEAM_QUERY}`, {
             method: "POST", headers: VERCEL_HEADERS,
             body: JSON.stringify({ name: repoName, gitRepository: { type: "github", repo: `${REPO_OWNER}/${repoName}` } })
-        }).then(res => res.json());
-
+        });
+        const vercelProject = await vercelProjectRes.json();
         if (vercelProject.error) throw new Error(`Vercel Error: ${vercelProject.error.message}`);
         
         const vercelUrl = `${repoName}.vercel.app`;
