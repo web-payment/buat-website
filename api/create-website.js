@@ -35,6 +35,7 @@ async function readJsonFromGithub(filePath) {
         throw err;
     }
 }
+
 async function writeJsonToGithub(filePath, json, message) {
     let sha;
     try {
@@ -88,6 +89,7 @@ async function handleGetDomains(req, res) {
 
 // --- Logika POST untuk Admin & Publik ---
 async function handleJsonActions(req, res) {
+    // ... (Kode di bagian ini tidak berubah, sudah lengkap dari sebelumnya)
     try {
         const { action, data, adminPassword } = req.body;
         const SETTINGS_PATH = "data/settings.json";
@@ -182,7 +184,6 @@ async function handleCreateWebsite(request, response) {
         }
         
         const repoName = subdomain;
-        // Cek duplikasi di Vercel & GitHub
         const vercelCheckRes = await fetch(`${VERCEL_API_BASE}/v9/projects/${repoName}${TEAM_QUERY}`, { headers: VERCEL_HEADERS });
         if (vercelCheckRes.ok) throw new Error(`Nama proyek "${repoName}" sudah digunakan di Vercel.`);
         try {
@@ -202,22 +203,18 @@ async function handleCreateWebsite(request, response) {
             await fsPromises.rename(uploadedFile.filepath, path.join(extractDir, "index.html"));
         } else throw new Error("Format file tidak didukung.");
         
-        // [PERBAIKAN TOTAL] Logika baru untuk menentukan folder utama (uploadRoot)
         let uploadRoot = extractDir;
         const itemsInExtractDir = await fsPromises.readdir(extractDir);
         if (itemsInExtractDir.length === 1) {
             const singleItemPath = path.join(extractDir, itemsInExtractDir[0]);
             const stats = await fsPromises.stat(singleItemPath);
             if (stats.isDirectory()) {
-                // Jika di dalam ZIP hanya ada satu folder, maka folder itulah yang menjadi root
                 uploadRoot = singleItemPath;
-                console.log(`Ditemukan satu folder di dalam ZIP, root diatur ke: ${uploadRoot}`);
             }
         }
         
         await octokit.repos.createForAuthenticatedUser({ name: repoName, private: false });
 
-        // Deteksi Proyek Node.js dan validasi
         const packageJsonPath = path.join(uploadRoot, 'package.json');
         const indexHtmlPath = path.join(uploadRoot, 'index.html');
         let isNodeProject = fs.existsSync(packageJsonPath);
@@ -238,7 +235,6 @@ async function handleCreateWebsite(request, response) {
                 await fsPromises.writeFile(vercelJsonPath, JSON.stringify(vercelConfig, null, 2));
             }
         } else if (!fs.existsSync(indexHtmlPath)) {
-            // Jika bukan proyek Node dan tidak ada index.html, upload tidak valid
             throw new Error("Upload tidak valid. Harus berupa proyek statis (mengandung index.html) atau proyek Node.js (mengandung package.json).");
         }
         
@@ -272,32 +268,63 @@ async function handleCreateWebsite(request, response) {
         });
 
         const finalDomain = `${subdomain}.${rootDomain}`;
-        await fetch(`${VERCEL_API_BASE}/v10/projects/${repoName}/domains${TEAM_QUERY}`, {
+        const addDomainRes = await fetch(`${VERCEL_API_BASE}/v10/projects/${repoName}/domains${TEAM_QUERY}`, {
             method: "POST", headers: VERCEL_HEADERS, body: JSON.stringify({ name: finalDomain })
         });
-        
+        const addDomainResult = await addDomainRes.json();
+
         const allDomains = JSON.parse(fs.readFileSync(path.resolve('./data/domains.json'), 'utf-8'));
         const domainInfo = allDomains[rootDomain];
         if (!domainInfo) throw new Error("Konfigurasi untuk domain utama tidak ditemukan.");
-        
         const cfAuthHeader = { "Authorization": `Bearer ${domainInfo.apitoken}` };
-        const recordsRes = await fetch(`https://api.cloudflare.com/client/v4/zones/${domainInfo.zone}/dns_records?name=${finalDomain}`, { headers: cfAuthHeader }).then(res => res.json());
-        if (recordsRes.success && recordsRes.result.length > 0) {
-            for (const record of recordsRes.result) {
+
+        // [PERBAIKAN TOTAL] Logika baru untuk menangani verifikasi dan pembuatan record DNS
+        // 1. Hapus record lama yang mungkin konflik
+        const existingRecordsRes = await fetch(`https://api.cloudflare.com/client/v4/zones/${domainInfo.zone}/dns_records?name=${finalDomain}`, { headers: cfAuthHeader });
+        const existingRecords = await existingRecordsRes.json();
+        if (existingRecords.success && existingRecords.result.length > 0) {
+            console.log(`Menemukan ${existingRecords.result.length} record DNS lama untuk ${finalDomain}, akan dihapus...`);
+            for (const record of existingRecords.result) {
                 await fetch(`https://api.cloudflare.com/client/v4/zones/${domainInfo.zone}/dns_records/${record.id}`, { method: 'DELETE', headers: cfAuthHeader });
             }
         }
 
+        // 2. Lakukan verifikasi jika diperlukan
+        if (addDomainResult.error?.code === 'domain_requires_verification') {
+            console.log(`Domain ${finalDomain} memerlukan verifikasi, memulai otomatisasi...`);
+            const verificationData = addDomainResult.error.verification[0];
+            const txtName = verificationData.domain.replace(`.${domainInfo.name}`, '');
+            const txtValue = verificationData.value;
+            
+            await fetch(`https://api.cloudflare.com/client/v4/zones/${domainInfo.zone}/dns_records`, {
+                method: "POST", headers: { ...cfAuthHeader, "Content-Type": "application/json" },
+                body: JSON.stringify({ type: 'TXT', name: txtName, content: txtValue, ttl: 1 })
+            });
+            console.log(`Record TXT verifikasi dibuat. Memberi jeda 20 detik...`);
+            await new Promise(resolve => setTimeout(resolve, 20000)); // Jeda 20 detik
+
+            const verifyRes = await fetch(`${VERCEL_API_BASE}/v9/projects/${repoName}/domains/${finalDomain}/verify${TEAM_QUERY}`, { method: "POST", headers: VERCEL_HEADERS });
+            const verifyResult = await verifyRes.json();
+            if (verifyResult.verified) {
+                console.log(`Domain ${finalDomain} berhasil diverifikasi secara otomatis.`);
+            } else {
+                console.warn(`Verifikasi otomatis belum berhasil, mungkin butuh waktu lebih lama.`);
+            }
+        }
+
+        // 3. Buat record A yang baru
+        console.log(`Membuat record A untuk ${finalDomain}...`);
         await fetch(`https://api.cloudflare.com/client/v4/zones/${domainInfo.zone}/dns_records`, {
             method: "POST", headers: { ...cfAuthHeader, "Content-Type": "application/json" },
             body: JSON.stringify({ type: 'A', name: subdomain, content: VERCEL_A_RECORD, proxied: false, ttl: 1 })
         });
+        console.log(`Record A berhasil dibuat.`);
         
         const vercelUrl = vercelProject.alias?.find(a => a.domain.endsWith('.vercel.app'))?.domain || `${repoName}.vercel.app`;
 
         return response.status(200).json({
             message: "Proses pembuatan website dimulai!",
-            siteData: { projectName: repoName, vercelUrl: `httpshttps://${vercelUrl}`, customUrl: `https://${finalDomain}`, status: 'pending' }
+            siteData: { projectName: repoName, vercelUrl: `https://${vercelUrl}`, customUrl: `https://${finalDomain}`, status: 'pending' }
         });
     } catch (error) {
         console.error("Create Website Error:", error);
