@@ -82,6 +82,7 @@ async function handleGetDomains(req, res) {
         return res.status(200).json(Object.keys(domainsData));
     } catch (error) {
         console.error("Error loading domains:", error);
+        // Pastikan folder /data dan file domains.json ada
         if (error.code === 'ENOENT') {
              return res.status(500).json({ message: "File konfigurasi domain tidak ditemukan." });
         }
@@ -100,10 +101,11 @@ async function handleJsonActions(req, res) {
         switch(action) {
             case 'getSettings': {
                 const settings = await readJsonFromGithub(SETTINGS_PATH);
-                // Default settings dengan struktur harga baru
                 const defaultSettings = {
                     whatsappNumber: "",
-                    pricingTiers: []
+                    normalPrice: 50000,
+                    discountPrice: 25000,
+                    discountEndDate: new Date().toISOString()
                 };
                 return res.status(200).json({ ...defaultSettings, ...settings });
             }
@@ -135,12 +137,7 @@ async function handleJsonActions(req, res) {
             case "updateSettings": {
                 if (!data) return res.status(400).json({ message: "Data pengaturan diperlukan." });
                 const currentSettings = await readJsonFromGithub(SETTINGS_PATH);
-                // Gabungkan pengaturan, pastikan data baru menimpa yang lama
-                const newSettings = { 
-                    ...currentSettings, 
-                    whatsappNumber: data.whatsappNumber,
-                    pricingTiers: data.pricingTiers
-                };
+                const newSettings = { ...currentSettings, ...data };
                 await writeJsonToGithub(SETTINGS_PATH, newSettings, "Update app settings");
                 return res.status(200).json({ message: "Pengaturan berhasil disimpan.", settings: newSettings });
             }
@@ -225,18 +222,16 @@ async function handleJsonActions(req, res) {
                 return res.status(200).json({ message: `Proyek Vercel '${projectName}' berhasil dihapus.` });
             }
             case "listAllCloudflareZones": {
-                let allZones = []; let page = 1; let totalPages, totalCount = 0;
+                let allZones = []; let page = 1; let totalPages;
                 do {
                     const response = await fetch(`https://api.cloudflare.com/client/v4/zones?page=${page}&per_page=50`, { headers: CF_HEADERS });
                     const result = await response.json();
                     if (!result.success) throw new Error("Gagal mengambil daftar zona dari Cloudflare.");
                     allZones = allZones.concat(result.result);
                     totalPages = result.result_info.total_pages;
-                    totalCount = result.result_info.total_count; // Ambil total count
                     page++;
                 } while (page <= totalPages);
-                // Kembalikan objek dengan zones dan totalCount
-                return res.status(200).json({ zones: allZones, totalCount: totalCount });
+                return res.status(200).json(allZones);
             }
             case "addCloudflareZone": {
                 const { domainName } = data;
