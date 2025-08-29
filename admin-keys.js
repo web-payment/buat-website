@@ -82,7 +82,6 @@ document.addEventListener('DOMContentLoaded', () => {
         openModal(apiKeySuccessModal);
     };
 
-    // [DIPERBAIKI] Fungsi untuk menampilkan popup sukses Cloudflare
     const showCloudflareSuccessPopup = (data) => {
         cfSuccessMessage.innerHTML = `Domain <strong>${data.domain}</strong> berhasil ditambahkan ke akun Cloudflare Anda.`;
         cfNameserverList.innerHTML = data.nameservers.map(ns => `<li class="nameserver-item"><span>${ns}</span><button class="copy-ns-btn" data-ns="${ns}">Copy</button></li>`).join('');
@@ -149,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
         checkboxes.forEach(cb => cb.addEventListener('change', () => {
             if(selectAllCheckbox) selectAllCheckbox.checked = [...checkboxes].every(c => c.checked);
             updateButtonVisibility();
-        }));
+        });
         if(bulkDeleteBtn) bulkDeleteBtn.addEventListener('click', async () => {
             const selectedItems = [...checkboxes].filter(cb => cb.checked);
             const selectedIds = selectedItems.map(cb => cb.value);
@@ -411,28 +410,59 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // [DIPERBAIKI] Logika penghapusan proyek
     modalBody.addEventListener('click', async (e) => {
         const targetButton = e.target.closest('button.delete-btn');
         if (!targetButton) return;
-        const repoName = targetButton.dataset.name;
-        let action, title, message;
-        if (targetButton.classList.contains('delete-repo-btn')) {
-            action = 'deleteRepo'; title = 'Hapus Repositori GitHub?';
-            message = `Tindakan ini akan menghapus permanen repositori '${repoName}' di GitHub.`;
-        } else if (targetButton.classList.contains('delete-vercel-btn')) {
-            action = 'deleteVercelProject'; title = 'Hapus Proyek Vercel?';
-            message = `Ini akan menghapus proyek '${repoName}' dari Vercel, termasuk semua deployment.`;
-        } else return;
         
-        if (await showConfirmation(title, message)) {
-            targetButton.textContent = 'Menghapus...'; targetButton.disabled = true;
+        const repoName = targetButton.dataset.name;
+        let action, title, message, originalText;
+
+        if (targetButton.classList.contains('delete-repo-btn')) {
+            action = 'deleteRepo';
+            title = 'Hapus Repositori GitHub?';
+            message = `Tindakan ini akan menghapus permanen repositori '${repoName}' di GitHub.`;
+            originalText = 'Hapus Repo';
+        } else if (targetButton.classList.contains('delete-vercel-btn')) {
+            action = 'deleteVercelProject';
+            title = 'Hapus Proyek Vercel?';
+            message = `Ini akan menghapus proyek '${repoName}' dari Vercel, termasuk semua deployment.`;
+            originalText = 'Hapus Vercel';
+        } else {
+            return;
+        }
+        
+        const confirmed = await showConfirmation(title, message);
+        if (confirmed) {
+            targetButton.textContent = 'Menghapus...';
+            targetButton.disabled = true;
             try {
                 const result = await callApi(action, { repoName: repoName, projectName: repoName });
                 showNotification(result.message, 'success');
-                targetButton.closest('.repo-item').remove();
+
+                const actionsContainer = targetButton.parentElement;
+                const repoItem = targetButton.closest('.repo-item');
+                const repoInfo = repoItem.querySelector('.item-info');
+
+                // Hapus tombol yang diklik
+                targetButton.remove();
+
+                // Jika sudah tidak ada tombol hapus lagi, berarti kedua bagian sudah dihapus
+                // Maka hapus seluruh baris proyek
+                if (actionsContainer.children.length === 0) {
+                    repoItem.style.opacity = '0';
+                    setTimeout(() => repoItem.remove(), 300);
+                } else {
+                    // Jika masih ada tombol lain (misal: tombol Vercel),
+                    // dan yang baru saja dihapus adalah repo GitHub,
+                    // ubah teks info untuk menandakan repo sudah tidak ada.
+                    if (action === 'deleteRepo') {
+                        repoInfo.innerHTML = `<strong>${repoName}</strong><span>(Hanya ada di Vercel)</span>`;
+                    }
+                }
             } catch (error) {
                 showNotification(error.message, 'error');
-                targetButton.textContent = title.includes('Repo') ? 'Hapus Repo' : 'Hapus Vercel';
+                targetButton.textContent = originalText;
                 targetButton.disabled = false;
             }
         }
@@ -482,10 +512,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!domainName) return showNotification('Nama domain tidak boleh kosong.', 'error');
             button.textContent = 'Menambahkan...'; button.disabled = true;
             try {
-                // [DIPERBAIKI] Tangkap hasil dari API call
                 const result = await callApi('addCloudflareZone', { domainName });
-                closeModal(cloudflareModal); // Tutup modal utama
-                showCloudflareSuccessPopup(result); // Tampilkan modal sukses dengan nameserver
+                closeModal(cloudflareModal);
+                showCloudflareSuccessPopup(result);
             } catch (error) { 
                 showNotification(error.message, 'error');
             } finally {
@@ -507,11 +536,9 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // [DIPERBAIKI] Tambahkan event listener untuk modal sukses CF
     cfSuccessOkBtn.addEventListener('click', () => {
         closeModal(cfSuccessModal);
-        manageDomainsBtn.click(); // Buka kembali modal utama
-        // Trik kecil untuk memastikan view Zona Cloudflare yang aktif
+        manageDomainsBtn.click();
         setTimeout(() => {
             const zonesButton = cloudflareModalBody.querySelector('button[data-view="zones"]');
             if (zonesButton) zonesButton.click();
