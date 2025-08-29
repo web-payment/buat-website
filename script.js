@@ -99,21 +99,18 @@ document.addEventListener('DOMContentLoaded', () => {
             });
             item.querySelector('.delete-site-btn').addEventListener('click', (e) => {
                 e.stopPropagation();
-                // This function is simplified because the full modal might not be in the final HTML.
-                // Re-implement with your custom confirmation modal if needed.
-                if (confirm(`Yakin ingin menghapus riwayat untuk "${site.customUrl.replace('https://','')}"? Ini tidak akan menghapus websitenya.`)) {
-                    removeSite(site.projectName);
-                    showToast('Riwayat berhasil dihapus.', 'success');
-                }
+                showConfirmation('Hapus Riwayat?', `Yakin ingin menghapus riwayat untuk "${site.customUrl.replace('https://','')}"? Ini tidak akan menghapus websitenya.`).then(confirmed => {
+                    if (confirmed) {
+                        removeSite(site.projectName);
+                        showToast('Riwayat berhasil dihapus.', 'success');
+                    }
+                });
             });
             sitesList.appendChild(item);
         });
     };
     
     const showConfirmation = (title, message) => {
-        if (!confirmationModal) {
-            return new Promise(resolve => resolve(confirm(`${title}\n${message}`)));
-        }
         confirmationModal.querySelector('#confirmation-modal-title').textContent = title;
         confirmationModal.querySelector('#confirmation-modal-message').textContent = message;
         confirmationModal.classList.add('show');
@@ -128,10 +125,6 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const showDetailsModal = (siteData) => {
-        if (!detailsModal) {
-             alert(`Detail Website:\nURL Kustom: ${siteData.customUrl}\nURL Vercel: ${siteData.vercelUrl}\nStatus: ${siteData.status}`);
-             return;
-        }
         modalVercelUrl.href = siteData.vercelUrl;
         modalVercelUrl.textContent = siteData.vercelUrl.replace('https://','');
         modalCustomUrl.href = siteData.customUrl;
@@ -143,15 +136,14 @@ document.addEventListener('DOMContentLoaded', () => {
     };
 
     const updateModalStatus = (status) => {
-        if (!modalCheckStatusBtn) return;
         modalCheckStatusBtn.disabled = false;
         modalCheckStatusBtn.innerHTML = '<i class="fas fa-sync-alt"></i> <span id="modal-status-text">Cek Status</span>';
         if (status === 'success') {
-            modalCheckStatusBtn.className = 'status success';
+            modalCheckStatusBtn.className = 'button-primary status success';
             modalCheckStatusBtn.textContent = 'Aktif';
             modalCheckStatusBtn.disabled = true;
         } else {
-            modalCheckStatusBtn.className = 'check-status-btn status pending';
+            modalCheckStatusBtn.className = 'button-primary status pending';
         }
     };
 
@@ -223,7 +215,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const minutes = Math.floor((distance % (1000 * 60 * 60)) / (1000 * 60));
             const seconds = Math.floor((distance % (1000 * 60)) / 1000);
             
-            // PERUBAHAN: Format waktu agar lebih rapi (DD:HH:MM:SS) dengan padding
             const pad = (n) => n < 10 ? '0' + n : n;
             countdownTimer.textContent = `${pad(days)}:${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
         };
@@ -257,16 +248,14 @@ document.addEventListener('DOMContentLoaded', () => {
         window.open(`https://wa.me/${waNumber}?text=${message}`, '_blank');
     });
 
-    if (guideModal) {
-        showGuideLink.addEventListener('click', (e) => {
-            e.preventDefault();
-            guideModal.classList.add('show');
-        });
-        guideCloseBtn.addEventListener('click', () => guideModal.classList.remove('show'));
-        guideModal.addEventListener('click', (e) => {
-            if(e.target === guideModal) guideModal.classList.remove('show');
-        });
-    }
+    showGuideLink.addEventListener('click', (e) => {
+        e.preventDefault();
+        guideModal.classList.add('show');
+    });
+    guideCloseBtn.addEventListener('click', () => guideModal.classList.remove('show'));
+    guideModal.addEventListener('click', (e) => {
+        if(e.target === guideModal) guideModal.classList.remove('show');
+    });
 
     creatorForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -314,39 +303,37 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    if (detailsModal) {
-        modalCloseBtn.addEventListener('click', () => detailsModal.classList.remove('show'));
-        detailsModal.addEventListener('click', (e) => {
-            if(e.target === detailsModal) detailsModal.classList.remove('show');
-        });
+    modalCloseBtn.addEventListener('click', () => detailsModal.classList.remove('show'));
+    detailsModal.addEventListener('click', (e) => {
+        if(e.target === detailsModal) detailsModal.classList.remove('show');
+    });
 
-        modalCheckStatusBtn.addEventListener('click', async (e) => {
-            const btn = e.currentTarget;
-            const { domain, project } = btn.dataset;
-            btn.disabled = true;
-            btn.innerHTML = '<div class="spinner" style="width:15px; height:15px; border-width:2px;"></div> Memeriksa...';
-            try {
-                const response = await fetch('/api/create-website', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ action: 'checkDomainStatus', data: { domain } })
-                });
-                const result = await response.json();
-                if (!response.ok) throw new Error(result.message);
-                if(result.status === 'success') {
-                    const updatedSite = updateSiteStatus(project, result.status);
-                    if(updatedSite) updateModalStatus(updatedSite.status);
-                    renderSitesList();
-                } else {
-                     updateModalStatus('pending');
-                }
-                showToast(result.message, result.status === 'success' ? 'success' : 'info');
-            } catch (error) {
-                showToast(error.message, 'error');
-                updateModalStatus('pending');
+    modalCheckStatusBtn.addEventListener('click', async (e) => {
+        const btn = e.currentTarget;
+        const { domain, project } = btn.dataset;
+        btn.disabled = true;
+        btn.innerHTML = '<div class="spinner" style="width:15px; height:15px; border-width:2px;"></div> Memeriksa...';
+        try {
+            const response = await fetch('/api/create-website', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action: 'checkDomainStatus', data: { domain } })
+            });
+            const result = await response.json();
+            if (!response.ok) throw new Error(result.message);
+            if(result.status === 'success') {
+                const updatedSite = updateSiteStatus(project, result.status);
+                if(updatedSite) updateModalStatus(updatedSite.status);
+                renderSitesList();
+            } else {
+                 updateModalStatus('pending');
             }
-        });
-    }
+            showToast(result.message, result.status === 'success' ? 'success' : 'info');
+        } catch (error) {
+            showToast(error.message, 'error');
+            updateModalStatus('pending');
+        }
+    });
 
     // === Inisialisasi Halaman ===
     const initializePage = async () => {
@@ -361,6 +348,7 @@ document.addEventListener('DOMContentLoaded', () => {
             ]);
         } catch (error) {
             console.error("Gagal inisialisasi halaman:", error);
+            showToast("Gagal memuat data awal.", "error");
         } finally {
             loadingOverlay.classList.add('hidden');
         }

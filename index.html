@@ -28,7 +28,6 @@
         }
         .main-container { width: 100%; max-width: 550px; animation: fadeIn 0.5s ease-out; }
         
-        /* Header */
         .main-header {
             display: flex; justify-content: space-between; align-items: center;
             padding: 0 10px 20px 10px;
@@ -88,6 +87,8 @@
         .sites-list-item { background: var(--bg-color); border-radius: 12px; padding: 15px; margin-bottom: 10px; cursor: pointer; transition: background-color 0.2s, transform 0.2s; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border-color); position: relative; }
         .sites-list-item:hover { transform: translateY(-3px); }
         .site-info h3 { margin: 0 0 5px; font-size: 1.1em; color: var(--text-color);}
+        .site-info p { text-align: left; font-size: 0.9em;}
+        .delete-site-btn { position: absolute; top: 5px; right: 5px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.2em; width: 25px; height: 25px; display: flex; justify-content: center; align-items: center;}
         .status { padding: 4px 10px; border-radius: 20px; font-size: 0.8em; font-weight: 500; color: white;}
         .status.pending { background-color: var(--pending-color); }
         .status.success { background-color: var(--success-color); }
@@ -95,7 +96,11 @@
         .modal-overlay.show { opacity: 1; visibility: visible; transition-delay: 0s; }
         .modal-content { background: var(--card-bg); border-radius: 20px; padding: 25px; width: 90%; max-width: 500px; transform: scale(0.9); transition: transform 0.3s; }
         .modal-header { text-align: center; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 20px; }
-        #modal-close-btn { width: auto; padding-left: 40px; padding-right: 40px; margin-top: 10px;}
+        .modal-header i { font-size: 2.5em; color: var(--primary-color); }
+        .modal-body-item { margin-bottom: 15px; }
+        .modal-body-item strong { display: block; color: var(--text-muted); font-size: 0.9em; margin-bottom: 5px;}
+        .modal-body-item a { color: var(--primary-color); text-decoration: none; word-break: break-all; }
+        #modal-close-btn { margin-top: 15px;}
         
         /* Toast & Loading */
         #toast-notification { position: fixed; top: 20px; left: 50%; transform: translate(-50%, -150%); z-index: 9999; background-color: rgba(44, 44, 46, 0.85); color: #fff; padding: 12px 20px; border-radius: 25px; font-size: 0.9em; font-weight: 500; box-shadow: 0 4px 15px rgba(0,0,0,0.2); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); opacity: 0; transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.5s ease; display: flex; align-items: center; gap: 10px; pointer-events: none; }
@@ -112,6 +117,11 @@
         .guide-content li { display: flex; align-items: flex-start; gap: 15px; margin-bottom: 15px; text-align: left;}
         .guide-content i { color: var(--primary-color); font-size: 1.2em; margin-top: 4px; }
         
+        .confirmation-buttons { display: flex; border-top: 1px solid var(--border-color); margin: 20px -25px -25px; }
+        .confirmation-buttons button { flex: 1; padding: 14px; border-radius: 0; background: none; font-size: 1.05em; font-weight: 500; }
+        #confirm-btn-no { color: var(--primary-color); border-right: 1px solid var(--border-color); border-bottom-left-radius: 20px; }
+        #confirm-btn-yes { color: var(--error-color); font-weight: 600; border-bottom-right-radius: 20px;}
+
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes pulse { 0% {transform: scale(1);} 50% {transform: scale(1.1);} 100% {transform: scale(1);} }
         @keyframes spin { to { transform: rotate(360deg); } }
@@ -175,7 +185,7 @@
             </button>
         </div>
 
-        <div id="created-sites-container" class="content-card" style="display: none;">
+        <div id="created-sites-container" class="content-card">
             <h2 class="card-title"><i class="fas fa-list"></i> Riwayat Website Anda</h2>
             <div id="sites-list" style="margin-top: 20px;"></div>
         </div>
@@ -185,32 +195,14 @@
     <div id="guide-modal" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
-                <i class="fas fa-info-circle" style="color: var(--primary-color);"></i>
+                <i class="fas fa-info-circle"></i>
                 <h2>Panduan Upload</h2>
             </div>
             <div class="guide-content">
                  <ul>
-                    <li>
-                        <i class="fas fa-file-archive"></i>
-                        <div>
-                            <strong>Batas Ukuran File: 4.5 MB</strong>
-                            <p>Karena limit dari Vercel (hosting), pastikan file .zip Anda tidak lebih dari 4.5 MB.</p>
-                        </div>
-                    </li>
-                    <li>
-                        <i class="fas fa-user-secret"></i>
-                        <div>
-                            <strong>Dilarang Mengunggah Data Sensitif</strong>
-                            <p>Jangan pernah menaruh API Key, password, atau data rahasia lain di dalam file. GitHub akan otomatis menolaknya.</p>
-                        </div>
-                    </li>
-                    <li>
-                        <i class="fas fa-gavel"></i>
-                        <div>
-                            <strong>Konten Ilegal Dilarang</strong>
-                            <p>Dilarang keras mengunggah konten yang melanggar hukum, SARA, perjudian, dan sejenisnya.</p>
-                        </div>
-                    </li>
+                    <li><i class="fas fa-file-archive"></i><div><strong>Batas Ukuran File: 4.5 MB</strong><p>Pastikan file .zip Anda tidak lebih dari 4.5 MB.</p></div></li>
+                    <li><i class="fas fa-user-secret"></i><div><strong>Dilarang Mengunggah Data Sensitif</strong><p>Jangan menaruh API Key atau password di dalam file.</p></div></li>
+                    <li><i class="fas fa-gavel"></i><div><strong>Konten Ilegal Dilarang</strong><p>Dilarang keras mengunggah konten yang melanggar hukum.</p></div></li>
                 </ul>
             </div>
             <div style="text-align: center;">
@@ -220,10 +212,34 @@
     </div>
 
     <div id="details-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <i class="fas fa-link"></i>
+                <h2>Detail Website</h2>
+            </div>
+            <div class="modal-body-item">
+                <strong>URL Kustom Anda:</strong>
+                <a href="#" target="_blank" id="modal-custom-url"></a>
+            </div>
+            <div class="modal-body-item">
+                <strong>URL Vercel:</strong>
+                <a href="#" target="_blank" id="modal-vercel-url"></a>
+            </div>
+            <button id="modal-check-status-btn" class="button-primary status pending" style="width: 100%;">Cek Status</button>
+            <button id="modal-close-btn" class="button-primary" style="margin-top: 10px; background-color: var(--text-muted);">Tutup</button>
         </div>
+    </div>
 
     <div id="confirmation-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 350px;">
+             <h3 id="confirmation-modal-title" style="text-align: center; font-weight: 600; padding: 20px 20px 5px;">Konfirmasi</h3>
+             <p id="confirmation-modal-message" style="font-size: 0.9em; padding: 0 20px 20px; color: var(--text-muted); text-align: center; white-space: pre-wrap;">Apakah Anda yakin?</p>
+             <div class="confirmation-buttons">
+                <button id="confirm-btn-no">Batal</button>
+                <button id="confirm-btn-yes">Hapus</button>
+            </div>
         </div>
+    </div>
 
     <script src="script.js"></script>
 </body>
