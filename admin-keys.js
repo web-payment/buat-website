@@ -35,9 +35,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const discountPriceInput = document.getElementById('discount-price');
     const discountDateInput = document.getElementById('discount-end-date');
     const logoutBtn = document.getElementById('logout-btn');
-    
-    const addDomainJsonForm = document.getElementById('add-domain-json-form');
-    const domainJsonListContainer = document.getElementById('domain-json-list-container');
+
     let apiKeyTextToCopy = '';
 
     // === Fungsi Bantuan & Logika Umum ===
@@ -65,10 +63,11 @@ document.addEventListener('DOMContentLoaded', () => {
     projectModal.addEventListener('click', (e) => { if (e.target === projectModal) closeModal(projectModal); });
     cloudflareModal.querySelector('.modal-close').addEventListener('click', () => closeModal(cloudflareModal));
     
+    // [PERBAIKAN] Fungsi showConfirmation diubah untuk menerima teks tombol custom
     const showConfirmation = (title, message, confirmText = 'Hapus') => {
         confirmTitle.textContent = title;
         confirmMessage.textContent = message;
-        confirmBtnYes.textContent = confirmText;
+        confirmBtnYes.textContent = confirmText; // Baris ini mengubah teks tombol
         openModal(confirmationModal);
         return new Promise((resolve) => {
             confirmBtnYes.onclick = () => { closeModal(confirmationModal); resolve(true); };
@@ -83,7 +82,32 @@ document.addEventListener('DOMContentLoaded', () => {
         apiKeyTextToCopy = `Ini adalah data apikey anda\n-------------------\nApikey: ${newKey.name}\nTanggal buat: ${formatFullDate(newKey.created_at)}\nTanggal kadaluarsa: ${expiryText}\n-------------------\nNotes:\n${notes}`;
         openModal(apiKeySuccessModal);
     };
-    
+
+    const showZoneTokenSuccessPopup = (zoneName, token) => {
+        const modal = document.getElementById('zone-token-success-modal');
+        const nameContainer = document.getElementById('zone-token-name');
+        const tokenContainer = document.getElementById('zone-token-value');
+        const copyBtn = document.getElementById('zone-token-copy-btn');
+        const okBtn = document.getElementById('zone-token-ok-btn');
+
+        nameContainer.textContent = zoneName;
+        tokenContainer.textContent = token;
+        copyBtn.dataset.token = token;
+
+        copyBtn.onclick = () => {
+             navigator.clipboard.writeText(token).then(() => {
+                copyBtn.innerHTML = '<i class="fas fa-check"></i> Tersalin!';
+                setTimeout(() => {
+                    copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy Token';
+                }, 2000);
+            });
+        };
+
+        okBtn.onclick = () => closeModal(modal);
+        
+        openModal(modal);
+    };
+
     // === Logika API ===
     const callApi = async (action, data = {}) => {
         const password = localStorage.getItem('adminPassword'); 
@@ -101,10 +125,7 @@ document.addEventListener('DOMContentLoaded', () => {
     // === Fungsi Render Tampilan ===
     const renderApiKeys = (keys) => {
         keyListContainer.innerHTML = '';
-        if (!keys || Object.keys(keys).length === 0) { 
-            keyListContainer.innerHTML = '<p>Belum ada API Key yang dibuat.</p>'; 
-            return; 
-        }
+        if (Object.keys(keys).length === 0) { keyListContainer.innerHTML = '<p>Belum ada API Key yang dibuat.</p>'; return; }
         for (const key in keys) {
             const keyData = keys[key];
             const expiry = keyData.expires_at === 'permanent' ? 'Permanen' : `Kadaluwarsa: ${formatFullDate(keyData.expires_at)}`;
@@ -128,47 +149,12 @@ document.addEventListener('DOMContentLoaded', () => {
         modalBody.innerHTML = `<ul class="list-item-container">${projectHtml}</ul>`;
     };
     
-    const renderJsonDomains = (domains) => {
-        domainJsonListContainer.innerHTML = '';
-        if (Object.keys(domains).length === 0) {
-            domainJsonListContainer.innerHTML = '<p>Belum ada domain yang ditambahkan ke file JSON.</p>';
-            return;
-        }
-        for (const domain in domains) {
-            const domainData = domains[domain];
-            const item = document.createElement('div');
-            item.className = 'key-item';
-            const hiddenToken = domainData.apitoken.slice(0, 4) + '...' + domainData.apitoken.slice(-4);
-            item.innerHTML = `
-                <div class="key-info" style="flex-grow: 1;">
-                    <span class="key-name">${domain}</span>
-                    <span class="key-expiry" style="font-family: monospace; font-size: 0.8em;">Zone: ${domainData.zone}</span>
-                    <span class="key-expiry" style="font-family: monospace; font-size: 0.8em;">Token: ${hiddenToken}</span>
-                </div>
-                <button class="delete-btn" data-domain="${domain}"><i class="fas fa-trash-alt"></i></button>
-            `;
-            domainJsonListContainer.appendChild(item);
-        }
-    };
-
-    const loadAndRenderJsonDomains = async () => {
-        domainJsonListContainer.innerHTML = '<p>Memuat domain dari JSON...</p>';
-        try {
-            const domains = await callApi('getDomainsFromJson');
-            renderJsonDomains(domains);
-        } catch (error) {
-            showNotification(error.message, 'error');
-            domainJsonListContainer.innerHTML = `<p style="color: var(--error-color);">${error.message}</p>`;
-        }
-    };
-    
     // === Logika Cloudflare ===
     const showCloudflareSuccessPopup = (data) => {
         cfSuccessMessage.innerHTML = `Domain <strong>${data.domain}</strong> berhasil ditambahkan ke akun Cloudflare Anda.`;
         cfNameserverList.innerHTML = data.nameservers.map(ns => `<li class="nameserver-item"><span>${ns}</span><button class="copy-ns-btn" data-ns="${ns}">Copy</button></li>`).join('');
         openModal(cfSuccessModal);
     };
-
     const setupBulkDeleteControls = (container, listType, context) => {
         const selectAllCheckbox = container.querySelector('.select-all-checkbox');
         const checkboxes = container.querySelectorAll('.item-checkbox');
@@ -293,14 +279,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 discountDateInput.value = date.toISOString().slice(0, 16);
             }
         } catch (error) {
-            // Jangan tampilkan notifikasi error di sini agar tidak mengganggu jika auto-login gagal
-            console.error("Gagal memuat pengaturan:", error);
+            showNotification(error.message, 'error');
         }
     };
     
     const setupNavigation = () => {
         const navButtons = document.querySelectorAll('.admin-nav .nav-btn');
         const pages = document.querySelectorAll('.admin-card .admin-page');
+
         navButtons.forEach(button => {
             button.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -309,36 +295,15 @@ document.addEventListener('DOMContentLoaded', () => {
                 navButtons.forEach(btn => btn.classList.remove('active'));
                 document.getElementById(targetPageId).style.display = 'block';
                 button.classList.add('active');
-                if (targetPageId === 'page-domains-json') {
-                    loadAndRenderJsonDomains();
-                }
             });
         });
     };
     
-    // --- [PERBAIKAN] LOGIKA LOGIN DAN STARTUP ---
-    const showAdminPanelAndLoadData = async () => {
+    const showAdminPanel = (keys) => {
         loginScreen.style.display = 'none';
         adminPanel.style.display = 'block';
-        
-        // Tampilkan pesan loading di dalam panel
-        keyListContainer.innerHTML = '<p>Memuat kunci API...</p>';
-
-        // Muat data pengaturan dan API keys
-        try {
-            await loadSettings();
-            const keys = await callApi('getApiKeys');
-            renderApiKeys(keys);
-        } catch (error) {
-            showNotification(`Sesi tidak valid atau gagal memuat data. Silakan login kembali.`, 'error');
-            keyListContainer.innerHTML = `<p style="color: var(--error-color);">Gagal memuat kunci.</p>`;
-            localStorage.removeItem('adminPassword');
-            
-            setTimeout(() => {
-                adminPanel.style.display = 'none';
-                loginScreen.style.display = 'block';
-            }, 2500);
-        }
+        renderApiKeys(keys);
+        loadSettings(); 
     };
 
     loginBtn.addEventListener('click', async () => {
@@ -347,10 +312,9 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('adminPassword', password); 
         loginBtn.textContent = 'Memverifikasi...'; loginBtn.disabled = true;
         try {
-            // Cukup panggil getSettings untuk verifikasi, lebih ringan dari getApiKeys
-            await callApi('getSettings'); 
+            const keys = await callApi('getApiKeys');
+            showAdminPanel(keys);
             showNotification('Login berhasil!', 'success');
-            await showAdminPanelAndLoadData();
         } catch (error) {
             showNotification(`Login Gagal: ${error.message}`, 'error');
             localStorage.removeItem('adminPassword'); 
@@ -360,20 +324,26 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const tryAutoLogin = async () => {
-        if (localStorage.getItem('adminPassword')) {
-            await showAdminPanelAndLoadData();
-        } else {
+        try {
+            if (localStorage.getItem('adminPassword')) {
+                const keys = await callApi('getApiKeys');
+                showAdminPanel(keys);
+            } else {
+                loginScreen.style.display = 'block';
+            }
+        } catch (error) {
+            localStorage.removeItem('adminPassword');
             loginScreen.style.display = 'block';
+        } finally {
+            loadingOverlay.classList.add('hidden');
         }
-        // Selalu sembunyikan loading overlay setelah pengecekan selesai
-        loadingOverlay.classList.add('hidden');
     };
-    
-    // --- EVENT LISTENERS LAINNYA ---
+
     settingsForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const button = e.target.querySelector('button');
         button.textContent = 'Menyimpan...'; button.disabled = true;
+
         const data = {
             whatsappNumber: waInput.value.trim(),
             normalPrice: parseInt(normalPriceInput.value, 10),
@@ -393,7 +363,9 @@ document.addEventListener('DOMContentLoaded', () => {
     logoutBtn.addEventListener('click', () => {
         localStorage.removeItem('adminPassword');
         showNotification('Anda telah logout.', 'success');
-        setTimeout(() => window.location.reload(), 1500);
+        setTimeout(() => {
+            window.location.reload();
+        }, 1500);
     });
 
     document.getElementById('create-key-form').addEventListener('submit', async (e) => {
@@ -409,7 +381,8 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const result = await callApi('createApiKey', data);
             showApiKeySuccessPopup(result.newKey);
-            e.target.reset();
+            document.getElementById('new-apikey-name').value = '';
+            document.getElementById('permanent-key').checked = false;
             document.getElementById('duration-section').style.display = 'block';
         } catch (error) {
             showNotification(`Gagal: ${error.message}`, 'error');
@@ -472,7 +445,13 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const result = await callApi(action, { repoName: repoName, projectName: repoName });
                 showNotification(result.message, 'success');
-                targetButton.closest('.repo-item').style.display = 'none';
+                const actionsContainer = targetButton.parentElement;
+                targetButton.remove();
+                if (actionsContainer.children.length === 0) {
+                    const repoItem = actionsContainer.parentElement;
+                    repoItem.style.opacity = '0';
+                    setTimeout(() => repoItem.remove(), 300);
+                }
             } catch (error) {
                 showNotification(error.message, 'error');
                 targetButton.textContent = originalText; targetButton.disabled = false;
@@ -537,14 +516,37 @@ document.addEventListener('DOMContentLoaded', () => {
                 const result = await callApi('addCloudflareZone', { domainName });
                 closeModal(cloudflareModal);
                 showCloudflareSuccessPopup(result);
-            } catch (error) { 
-                showNotification(error.message, 'error');
-            } finally { 
-                button.textContent = 'Tambah'; button.disabled = false; 
-            }
+                input.value = '';
+            } catch (error) { showNotification(error.message, 'error');
+            } finally { button.textContent = 'Tambah'; button.disabled = false; }
         }
         if (e.target.classList.contains('manage-dns-btn')) {
             showDnsRecordsView(e.target.dataset.zoneId, e.target.dataset.zoneName);
+        }
+        
+        if (e.target.classList.contains('create-zone-token-btn')) {
+            const button = e.target;
+            const zoneId = button.dataset.zoneId;
+            const zoneName = button.dataset.zoneName;
+            
+            // [PERBAIKAN] Mengubah teks tombol 'Hapus' menjadi 'Lanjutkan'
+            const message = `Anda akan membuat API Token baru yang hanya bisa mengakses zona "${zoneName}". Token lama (jika ada) di file data akan ditimpa. Lanjutkan?`;
+            const confirmed = await showConfirmation('Buat API Token?', message, 'Lanjutkan');
+
+            if (confirmed) {
+                button.textContent = 'Membuat...';
+                button.disabled = true;
+                try {
+                    const result = await callApi('createTokenForExistingZone', { zoneId, zoneName });
+                    showNotification(result.message, 'success');
+                    showZoneTokenSuccessPopup(result.zoneName, result.apiToken);
+                } catch (error) {
+                    showNotification(error.message, 'error');
+                } finally {
+                    button.textContent = 'Buat Token';
+                    button.disabled = false;
+                }
+            }
         }
     });
 
@@ -566,56 +568,25 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    addDomainJsonForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const button = e.target.querySelector('button[type="submit"]');
-        const data = {
-            domainName: document.getElementById('json-domain-name').value.trim(),
-            zoneId: document.getElementById('json-zone-id').value.trim(),
-            apiToken: document.getElementById('json-api-token').value.trim()
-        };
-        if (!data.domainName || !data.zoneId || !data.apiToken) {
-            return showNotification('Semua field harus diisi.', 'error');
-        }
-        button.textContent = 'Menambahkan...'; button.disabled = true;
-        try {
-            const result = await callApi('addDomainToJson', data);
-            showNotification(result.message, 'success');
-            addDomainJsonForm.reset();
-            await loadAndRenderJsonDomains();
-        } catch (error) {
-            showNotification(error.message, 'error');
-        } finally {
-            button.textContent = 'Tambah Domain ke JSON'; button.disabled = false;
-        }
-    });
-
-    domainJsonListContainer.addEventListener('click', async (e) => {
-        const button = e.target.closest('.delete-btn');
-        if (button) {
-            const domainName = button.dataset.domain;
-            const confirmed = await showConfirmation('Hapus Domain dari JSON?', `Anda yakin ingin menghapus '${domainName}' dari file domains.json?`);
-            if (confirmed) {
-                try {
-                    const result = await callApi('deleteDomainFromJson', { domainName });
-                    showNotification(result.message, 'success');
-                    await loadAndRenderJsonDomains();
-                } catch (error) {
-                    showNotification(`Gagal menghapus: ${error.message}`, 'error');
-                }
-            }
-        }
-    });
-
     document.getElementById('permanent-key').addEventListener('change', (e) => {
         document.getElementById('duration-section').style.display = e.target.checked ? 'none' : 'block';
     });
 
     // === Inisialisasi Aplikasi ===
     const init = () => {
+        const themeToggle = document.getElementById('theme-toggle');
+        const body = document.body;
+        const savedTheme = localStorage.getItem('theme_preference_v1') || 'light';
+        if (savedTheme === 'dark') { body.classList.add('dark-mode'); themeToggle.innerHTML = '<i class="fas fa-sun"></i>'; } 
+        else { body.classList.remove('dark-mode'); themeToggle.innerHTML = '<i class="fas fa-moon"></i>'; }
+        themeToggle.addEventListener('click', () => {
+            const newTheme = body.classList.contains('dark-mode') ? 'light' : 'dark';
+            localStorage.setItem('theme_preference_v1', newTheme);
+            if (newTheme === 'dark') { body.classList.add('dark-mode'); themeToggle.innerHTML = '<i class="fas fa-sun"></i>'; }
+            else { body.classList.remove('dark-mode'); themeToggle.innerHTML = '<i class="fas fa-moon"></i>'; }
+        });
         setupNavigation();
-        // [PERBAIKAN] Panggil langsung tanpa timeout agar lebih cepat
-        tryAutoLogin(); 
+        setTimeout(tryAutoLogin, 700);
     };
     
     init();
