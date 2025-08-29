@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Admin - Manajemen Lanjutan</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
@@ -24,13 +24,12 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: 'Poppins', sans-serif; background-color: var(--bg-color); color: var(--text-color);
-            display: flex; justify-content: center; align-items: center; /* [DIPERBARUI] Posisi tengah */
+            display: flex; justify-content: center; align-items: center;
             min-height: 100vh; padding: 20px;
             transition: background-color 0.3s, color 0.3s;
         }
         .main-container { width: 100%; max-width: 700px; position: relative; margin-top: 50px; }
         
-        /* === [BARU] Foto Profil === */
         .profile-picture-container {
             position: absolute;
             top: -50px;
@@ -161,6 +160,13 @@
         .nameserver-list { list-style-type: none; padding: 0; margin: 0 25px 20px; }
         .nameserver-item { display: flex; justify-content: space-between; align-items: center; padding: 10px; background-color: var(--bg-color); border-radius: 8px; margin-bottom: 8px; font-family: monospace; }
         .copy-ns-btn { font-size: 0.8em; padding: 4px 8px; background-color: var(--text-muted); }
+        /* [STYLE BARU DITAMBAHKAN DI SINI] */
+        .create-zone-token-btn {
+            background-color: var(--success-color);
+            font-size: 0.9em;
+            margin-left: 5px;
+            padding: 8px 10px;
+        }
     </style>
 </head>
 <body>
@@ -236,6 +242,22 @@
     <div id="cloudflare-modal" class="modal-overlay"><div class="modal-content"><button class="modal-close">&times;</button><div class="modal-header"><h2 id="cloudflare-modal-title">Manajemen Domain</h2></div><div id="cloudflare-modal-body"></div></div></div>
     <div id="cf-success-modal" class="modal-overlay"><div class="modal-content"><h3><i class="fas fa-check-circle" style="color: var(--success-color);"></i> Domain Ditambahkan!</h3><div class="apikey-info-box" style="text-align: left;"><p id="cf-success-message"></p></div><ul class="nameserver-list" id="cf-nameserver-list"></ul><div class="apikey-info-box"><p><i class="fas fa-info-circle"></i> Segera perbarui nameserver di registrar domain Anda dengan data di atas.</p></div><div class="apikey-success-footer"><button id="cf-success-ok-btn">Selesai</button></div></div></div>
     
+    <div id="zone-token-success-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 420px; text-align: center;">
+            <h3><i class="fas fa-check-circle" style="color: var(--success-color);"></i> Token Berhasil Dibuat!</h3>
+            <p style="padding: 0 20px 20px; color: var(--text-muted); font-size: 0.9em;">
+                API Token khusus untuk domain <strong id="zone-token-name"></strong> telah dibuat dan disimpan.
+            </p>
+            <div class="apikey-info-box" style="margin: 0 25px 25px; text-align: left;">
+                <code id="zone-token-value" style="word-break: break-all;"></code>
+            </div>
+            <div class="apikey-success-footer">
+                <button id="zone-token-copy-btn"><i class="fas fa-copy"></i> Copy Token</button>
+                <button id="zone-token-ok-btn">Selesai</button>
+            </div>
+        </div>
+    </div>
+
     <script src="admin-keys.js"></script>
 </body>
 </html>

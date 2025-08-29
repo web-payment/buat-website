@@ -29,7 +29,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const cfNameserverList = document.getElementById('cf-nameserver-list');
     const cfSuccessOkBtn = document.getElementById('cf-success-ok-btn');
     
-    // ELEMEN BARU
     const settingsForm = document.getElementById('settings-form');
     const waInput = document.getElementById('whatsapp-number');
     const normalPriceInput = document.getElementById('normal-price');
@@ -80,6 +79,32 @@ document.addEventListener('DOMContentLoaded', () => {
         const notes = "Harap simpan detail kunci ini dengan baik. Informasi ini bersifat rahasia dan tidak akan ditampilkan lagi demi keamanan Anda.";
         apiKeyTextToCopy = `Ini adalah data apikey anda\n-------------------\nApikey: ${newKey.name}\nTanggal buat: ${formatFullDate(newKey.created_at)}\nTanggal kadaluarsa: ${expiryText}\n-------------------\nNotes:\n${notes}`;
         openModal(apiKeySuccessModal);
+    };
+
+    // [FUNGSI BARU]
+    const showZoneTokenSuccessPopup = (zoneName, token) => {
+        const modal = document.getElementById('zone-token-success-modal');
+        const nameContainer = document.getElementById('zone-token-name');
+        const tokenContainer = document.getElementById('zone-token-value');
+        const copyBtn = document.getElementById('zone-token-copy-btn');
+        const okBtn = document.getElementById('zone-token-ok-btn');
+
+        nameContainer.textContent = zoneName;
+        tokenContainer.textContent = token;
+        copyBtn.dataset.token = token;
+
+        copyBtn.onclick = () => {
+             navigator.clipboard.writeText(token).then(() => {
+                copyBtn.innerHTML = '<i class="fas fa-check"></i> Tersalin!';
+                setTimeout(() => {
+                    copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy Token';
+                }, 2000);
+            });
+        };
+
+        okBtn.onclick = () => closeModal(modal);
+        
+        openModal(modal);
     };
 
     // === Logika API ===
@@ -179,7 +204,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
     
-    // === [DIPERBARUI] Menampilkan jumlah domain ===
+    // [MODIFIKASI]
     const renderCloudflareZones = (zones) => {
         cloudflareModalTitle.innerHTML = `Manajemen Zona Cloudflare <span class="item-count">${zones.length}</span>`;
         let listHtml = zones.map(zone => `
@@ -190,6 +215,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span>Status: ${zone.status}</span>
                 </div>
                 <button class="manage-dns-btn" data-zone-id="${zone.id}" data-zone-name="${zone.name}">Kelola DNS</button>
+                <button class="create-zone-token-btn" data-zone-id="${zone.id}" data-zone-name="${zone.name}">Buat Token</button>
             </li>`).join('');
 
         cloudflareModalBody.innerHTML = `
@@ -258,7 +284,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
     
-    // === [BARU] Fungsi Navigasi Halaman Admin ===
     const setupNavigation = () => {
         const navButtons = document.querySelectorAll('.admin-nav .nav-btn');
         const pages = document.querySelectorAll('.admin-card .admin-page');
@@ -267,14 +292,8 @@ document.addEventListener('DOMContentLoaded', () => {
             button.addEventListener('click', (e) => {
                 e.preventDefault();
                 const targetPageId = button.dataset.page;
-
-                // Sembunyikan semua halaman
                 pages.forEach(page => page.style.display = 'none');
-                
-                // Hapus kelas aktif dari semua tombol
                 navButtons.forEach(btn => btn.classList.remove('active'));
-
-                // Tampilkan halaman target dan aktifkan tombol
                 document.getElementById(targetPageId).style.display = 'block';
                 button.classList.add('active');
             });
@@ -350,7 +369,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 1500);
     });
 
-    // ... sisa event listener lainnya tidak perlu diubah ...
     document.getElementById('create-key-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const createBtn = e.target.querySelector('button[type="submit"]');
@@ -486,6 +504,7 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.matches('.search-form, #add-domain-form')) e.preventDefault();
     });
 
+    // [MODIFIKASI]
     cloudflareModalBody.addEventListener('click', async (e) => {
         if (e.target.closest('#add-domain-form button')) {
             e.preventDefault();
@@ -505,6 +524,33 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (e.target.classList.contains('manage-dns-btn')) {
             showDnsRecordsView(e.target.dataset.zoneId, e.target.dataset.zoneName);
+        }
+        
+        // [LOGIKA BARU DITAMBAHKAN DI SINI]
+        if (e.target.classList.contains('create-zone-token-btn')) {
+            const button = e.target;
+            const zoneId = button.dataset.zoneId;
+            const zoneName = button.dataset.zoneName;
+            
+            const confirmed = await showConfirmation(
+                'Buat API Token?',
+                `Anda akan membuat API Token baru yang hanya bisa mengakses zona "${zoneName}". Token lama (jika ada) di file data akan ditimpa. Lanjutkan?`
+            );
+
+            if (confirmed) {
+                button.textContent = 'Membuat...';
+                button.disabled = true;
+                try {
+                    const result = await callApi('createTokenForExistingZone', { zoneId, zoneName });
+                    showNotification(result.message, 'success');
+                    showZoneTokenSuccessPopup(result.zoneName, result.apiToken);
+                } catch (error) {
+                    showNotification(error.message, 'error');
+                } finally {
+                    button.textContent = 'Buat Token';
+                    button.disabled = false;
+                }
+            }
         }
     });
 
@@ -543,7 +589,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (newTheme === 'dark') { body.classList.add('dark-mode'); themeToggle.innerHTML = '<i class="fas fa-sun"></i>'; }
             else { body.classList.remove('dark-mode'); themeToggle.innerHTML = '<i class="fas fa-moon"></i>'; }
         });
-        setupNavigation(); // [BARU] Menjalankan fungsi navigasi
+        setupNavigation();
         setTimeout(tryAutoLogin, 700);
     };
     
