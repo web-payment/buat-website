@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // === Elemen UI dari Kode Asli Anda ===
+    // === Elemen UI ===
     const loadingOverlay = document.getElementById('loading-overlay');
     const loginScreen = document.getElementById('login-screen');
     const adminPanel = document.getElementById('admin-panel');
@@ -9,6 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const keyListContainer = document.getElementById('api-key-list-container');
     const manageProjectsBtn = document.getElementById('manage-projects-btn');
     const projectModal = document.getElementById('project-modal');
+    const modalCloseBtn = projectModal.querySelector('.modal-close');
     const modalBody = document.getElementById('modal-body');
     const confirmationModal = document.getElementById('confirmation-modal');
     const confirmTitle = document.getElementById('confirmation-modal-title');
@@ -27,27 +28,44 @@ document.addEventListener('DOMContentLoaded', () => {
     const cfSuccessMessage = document.getElementById('cf-success-message');
     const cfNameserverList = document.getElementById('cf-nameserver-list');
     const cfSuccessOkBtn = document.getElementById('cf-success-ok-btn');
-    const logoutBtn = document.getElementById('logout-btn');
-    // Elemen Baru untuk Atur Harga
+    
+    // ELEMEN BARU
     const settingsForm = document.getElementById('settings-form');
     const waInput = document.getElementById('whatsapp-number');
+    const normalPriceInput = document.getElementById('normal-price');
+    const discountPriceInput = document.getElementById('discount-price');
+    const discountDateInput = document.getElementById('discount-end-date');
+    const logoutBtn = document.getElementById('logout-btn-nav');
+    const navButtons = document.querySelectorAll('.nav-btn');
+    const sections = document.querySelectorAll('.admin-section');
 
-    // === Variabel Global ===
     let apiKeyTextToCopy = '';
 
     // === Fungsi Bantuan & Logika Umum ===
-    const formatFullDate = (isoString) => new Date(isoString).toLocaleString('id-ID', { day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit' });
+    const formatFullDate = (isoString) => new Date(isoString).toLocaleString('id-ID', {
+        day: '2-digit', month: 'long', year: 'numeric', hour: '2-digit', minute: '2-digit'
+    });
+    
     let notificationTimeout;
     const showNotification = (message, type = 'success') => {
         clearTimeout(notificationTimeout);
         notificationContainer.innerHTML = '';
-        const notif = document.createElement('div'); notif.className = `notification ${type}`; notif.textContent = message;
+        const notif = document.createElement('div');
+        notif.className = `notification ${type}`;
+        notif.textContent = message;
         notificationContainer.appendChild(notif);
-        notificationTimeout = setTimeout(() => { notif.style.opacity = '0'; setTimeout(() => notif.remove(), 300); }, 4000);
+        notificationTimeout = setTimeout(() => {
+            notif.style.opacity = '0';
+            setTimeout(() => notif.remove(), 300);
+        }, 4000);
     };
+
     const openModal = (modal) => modal.style.display = 'flex';
     const closeModal = (modal) => modal.style.display = 'none';
-
+    modalCloseBtn.addEventListener('click', () => closeModal(projectModal));
+    projectModal.addEventListener('click', (e) => { if (e.target === projectModal) closeModal(projectModal); });
+    cloudflareModal.querySelector('.modal-close').addEventListener('click', () => closeModal(cloudflareModal));
+    
     const showConfirmation = (title, message) => {
         confirmTitle.textContent = title;
         confirmMessage.textContent = message;
@@ -58,11 +76,21 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
 
+    const showApiKeySuccessPopup = (newKey) => {
+        const expiryText = newKey.expires_at === 'permanent' ? 'Permanen' : formatFullDate(newKey.expires_at);
+        apiKeyDetailsContainer.innerHTML = `<div class="detail-item"><span class="detail-label">Kunci API</span><span class="detail-value">${newKey.name}</span></div><div class="detail-item"><span class="detail-label">Dibuat</span><span class="detail-value">${formatFullDate(newKey.created_at)}</span></div><div class="detail-item"><span class="detail-label">Kadaluwarsa</span><span class="detail-value">${expiryText}</span></div>`;
+        const notes = "Harap simpan detail kunci ini dengan baik. Informasi ini bersifat rahasia dan tidak akan ditampilkan lagi demi keamanan Anda.";
+        apiKeyTextToCopy = `Ini adalah data apikey anda\n-------------------\nApikey: ${newKey.name}\nTanggal buat: ${formatFullDate(newKey.created_at)}\nTanggal kadaluarsa: ${expiryText}\n-------------------\nNotes:\n${notes}`;
+        openModal(apiKeySuccessModal);
+    };
+
+    // === Logika API ===
     const callApi = async (action, data = {}) => {
-        const password = localStorage.getItem('adminPassword_v1');
+        const password = localStorage.getItem('adminPassword'); 
         if (!password) throw new Error('Sesi admin tidak valid');
         const response = await fetch('/api/create-website', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' },
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action, data, adminPassword: password })
         });
         const result = await response.json();
@@ -70,7 +98,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return result;
     };
 
-    // === Fungsi Render Tampilan (Lengkap seperti kode asli) ===
+    // === Fungsi Render Tampilan ===
     const renderApiKeys = (keys) => {
         keyListContainer.innerHTML = '';
         if (Object.keys(keys).length === 0) { keyListContainer.innerHTML = '<p>Belum ada API Key yang dibuat.</p>'; return; }
@@ -96,8 +124,8 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         modalBody.innerHTML = `<ul class="list-item-container">${projectHtml}</ul>`;
     };
-
-    // === Logika Cloudflare (Lengkap seperti kode asli) ===
+    
+    // === Logika Cloudflare ===
     const showCloudflareSuccessPopup = (data) => {
         cfSuccessMessage.innerHTML = `Domain <strong>${data.domain}</strong> berhasil ditambahkan ke akun Cloudflare Anda.`;
         cfNameserverList.innerHTML = data.nameservers.map(ns => `<li class="nameserver-item"><span>${ns}</span><button class="copy-ns-btn" data-ns="${ns}">Copy</button></li>`).join('');
@@ -109,8 +137,10 @@ document.addEventListener('DOMContentLoaded', () => {
         const bulkDeleteBtn = container.querySelector('.bulk-delete-btn');
         const updateButtonVisibility = () => {
             const checkedCount = container.querySelectorAll('.item-checkbox:checked').length;
-            bulkDeleteBtn.style.display = checkedCount > 0 ? 'inline-flex' : 'none';
-            bulkDeleteBtn.textContent = `Hapus ${checkedCount} Item Terpilih`;
+            if (bulkDeleteBtn) {
+                bulkDeleteBtn.style.display = checkedCount > 0 ? 'inline-flex' : 'none';
+                bulkDeleteBtn.textContent = `Hapus ${checkedCount} Item Terpilih`;
+            }
         };
         if(selectAllCheckbox) selectAllCheckbox.addEventListener('change', (e) => {
             checkboxes.forEach(cb => cb.checked = e.target.checked);
@@ -152,9 +182,8 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     };
-    const renderCloudflareZones = (data) => {
-        const { zones, totalCount } = data;
-        cloudflareModalTitle.textContent = `Manajemen Zona Cloudflare (${totalCount} Domain)`;
+    const renderCloudflareZones = (zones) => {
+        cloudflareModalTitle.textContent = 'Manajemen Zona Cloudflare';
         let listHtml = zones.map(zone => `
             <li class="list-item" data-search-term="${zone.name.toLowerCase()}">
                 <input type="checkbox" class="item-checkbox" value="${zone.id}" data-name="${zone.name}">
@@ -215,62 +244,81 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
     
-    // === Fungsi Baru untuk Atur Harga ===
+    // --- FUNGSI UNTUK MEMUAT KONTEN TAB ---
     const loadSettings = async () => {
         try {
             const res = await callApi('getSettings');
-            waInput.value = res.whatsappNumber || '';
-            renderPricingTiers(res.pricingTiers || []);
-        } catch (error) { showNotification(error.message, 'error'); }
-    };
-    const addPricingTier = (tier = {}) => {
-        const container = document.getElementById('pricing-tiers-container');
-        const item = document.createElement('div'); item.className = 'price-tier-item';
-        item.dataset.id = tier.id || `new_${Date.now()}`;
-        const promoEndDate = tier.promoEndDate ? new Date(tier.promoEndDate).toISOString().slice(0, 16) : '';
-        item.innerHTML = `
-            <button type="button" class="delete-tier-btn">&times;</button>
-            <div class="price-tier-grid">
-                <div class="form-group"><label>Nama Paket</label><input type="text" class="tier-name" placeholder="Paket 7 Hari" value="${tier.name || ''}" required></div>
-                <div class="form-group"><label>Harga (Rp)</label><input type="number" class="tier-price" placeholder="25000" value="${tier.price || ''}" required></div>
-            </div>
-            <div class="form-group full-width-group"><label>Deskripsi Singkat</label><textarea class="tier-description" rows="2">${tier.description || ''}</textarea></div>
-            <div class="form-group full-width-group" style="display: flex; align-items: center; gap: 10px; margin-bottom: 5px;">
-                <input type="checkbox" class="tier-promo" ${tier.isPromo ? 'checked' : ''} style="width: auto;">
-                <label style="margin:0;">Jadikan Promo (menampilkan banner & countdown)</label>
-            </div>
-            <div class="form-group full-width-group promo-date-container" style="${tier.isPromo ? '' : 'display:none;'}">
-                <label>Tanggal Berakhir Promo</label><input type="datetime-local" class="tier-promo-date" value="${promoEndDate}">
-            </div>
-        `;
-        container.appendChild(item);
-    };
-    const renderPricingTiers = (tiers) => {
-        const container = document.getElementById('pricing-tiers-container');
-        container.innerHTML = '';
-        if (tiers && tiers.length > 0) tiers.forEach(tier => addPricingTier(tier));
+            waInput.value = res.whatsappNumber;
+            normalPriceInput.value = res.normalPrice;
+            discountPriceInput.value = res.discountPrice;
+            if (res.discountEndDate) {
+                const date = new Date(res.discountEndDate);
+                // Adjust for timezone to display correctly in datetime-local input
+                date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
+                discountDateInput.value = date.toISOString().slice(0, 16);
+            }
+        } catch (error) {
+            showNotification(error.message, 'error');
+        }
     };
 
-    // === Logika Utama & Event Listener ===
-    const showAdminPanel = (keys) => {
+    const loadApiKeys = async () => {
+        try {
+            const keys = await callApi('getApiKeys');
+            renderApiKeys(keys);
+        } catch (error) {
+             showNotification(error.message, 'error');
+             keyListContainer.innerHTML = `<p style="color:var(--error-color);">${error.message}</p>`;
+        }
+    }
+    
+    // === Fungsi Utama & Event Listener ===
+    const showAdminPanel = () => {
         loginScreen.style.display = 'none';
         adminPanel.style.display = 'block';
-        renderApiKeys(keys);
+        // Muat konten untuk tab default (pengaturan) saat panel pertama kali ditampilkan
         loadSettings();
     };
+
+    // --- LOGIKA NAVIGASI TAB BARU ---
+    navButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const targetId = button.dataset.target;
+            
+            if (!targetId) return; // Abaikan jika tombol tidak punya data-target (seperti logout)
+
+            // Sembunyikan semua section dan hapus class active dari semua tombol
+            navButtons.forEach(btn => btn.classList.remove('active'));
+            sections.forEach(sec => sec.classList.remove('active'));
+            
+            // Tampilkan yang dituju
+            button.classList.add('active');
+            document.getElementById(targetId).classList.add('active');
+
+            // Muat konten sesuai tab yang diklik
+            if (targetId === 'pengaturan') {
+                loadSettings();
+            } else if (targetId === 'kelola-produk') {
+                loadApiKeys();
+            }
+            // Tab 'manajer-domain' hanya berisi tombol, tidak perlu pre-load
+        });
+    });
+
 
     loginBtn.addEventListener('click', async () => {
         const password = passwordInput.value;
         if (!password) return showNotification('Password tidak boleh kosong.', 'error');
-        localStorage.setItem('adminPassword_v1', password); 
+        localStorage.setItem('adminPassword', password); 
         loginBtn.textContent = 'Memverifikasi...'; loginBtn.disabled = true;
         try {
-            const keys = await callApi('getApiKeys');
-            showAdminPanel(keys);
+            // Cukup panggil API untuk verifikasi, tidak perlu menyimpan hasilnya
+            await callApi('getApiKeys');
+            showAdminPanel();
             showNotification('Login berhasil!', 'success');
         } catch (error) {
             showNotification(`Login Gagal: ${error.message}`, 'error');
-            localStorage.removeItem('adminPassword_v1'); 
+            localStorage.removeItem('adminPassword'); 
         } finally {
             loginBtn.textContent = 'Masuk'; loginBtn.disabled = false;
         }
@@ -278,51 +326,32 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const tryAutoLogin = async () => {
         try {
-            if (localStorage.getItem('adminPassword_v1')) {
-                const keys = await callApi('getApiKeys');
-                showAdminPanel(keys);
+            if (localStorage.getItem('adminPassword')) {
+                // Cukup panggil API untuk verifikasi sesi
+                await callApi('getApiKeys');
+                showAdminPanel();
             } else {
                 loginScreen.style.display = 'block';
             }
         } catch (error) {
-            localStorage.removeItem('adminPassword_v1');
+            localStorage.removeItem('adminPassword');
             loginScreen.style.display = 'block';
         } finally {
             loadingOverlay.classList.add('hidden');
         }
     };
-    
-    // Tambahkan event listener untuk TAB
-    document.querySelectorAll('.tab-button').forEach(button => {
-        button.addEventListener('click', () => {
-            document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
-            document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
-            button.classList.add('active');
-            document.getElementById(button.dataset.tab).classList.add('active');
-        });
-    });
 
-    // Event listener BARU untuk form harga
     settingsForm.addEventListener('submit', async (e) => {
         e.preventDefault();
-        const button = e.target.querySelector('button[type="submit"]');
+        const button = e.target.querySelector('button');
         button.textContent = 'Menyimpan...'; button.disabled = true;
-        const pricingTiers = [];
-        document.querySelectorAll('.price-tier-item').forEach(item => {
-            // Hanya satu promo yang bisa aktif
-            const promoCheckbox = item.querySelector('.tier-promo');
-            const promoDateInput = item.querySelector('.tier-promo-date');
-            
-            pricingTiers.push({
-                id: item.dataset.id,
-                name: item.querySelector('.tier-name').value,
-                price: item.querySelector('.tier-price').value,
-                description: item.querySelector('.tier-description').value,
-                isPromo: promoCheckbox.checked,
-                promoEndDate: promoCheckbox.checked ? new Date(promoDateInput.value).toISOString() : null
-            });
-        });
-        const data = { whatsappNumber: waInput.value.trim(), pricingTiers };
+
+        const data = {
+            whatsappNumber: waInput.value.trim(),
+            normalPrice: parseInt(normalPriceInput.value, 10),
+            discountPrice: parseInt(discountPriceInput.value, 10),
+            discountEndDate: discountDateInput.value ? new Date(discountDateInput.value).toISOString() : null
+        };
         try {
             const res = await callApi('updateSettings', data);
             showNotification(res.message, 'success');
@@ -332,29 +361,15 @@ document.addEventListener('DOMContentLoaded', () => {
             button.textContent = 'Simpan Pengaturan'; button.disabled = false;
         }
     });
-    document.getElementById('add-tier-btn').addEventListener('click', () => addPricingTier());
-    document.getElementById('pricing-tiers-container').addEventListener('change', (e) => {
-        if (e.target.classList.contains('tier-promo')) {
-            const container = e.target.closest('.price-tier-item').querySelector('.promo-date-container');
-            container.style.display = e.target.checked ? 'block' : 'none';
-            // Nonaktifkan promo lain jika ini dicentang
-            if (e.target.checked) {
-                document.querySelectorAll('.tier-promo').forEach(checkbox => {
-                    if (checkbox !== e.target) {
-                        checkbox.checked = false;
-                        checkbox.closest('.price-tier-item').querySelector('.promo-date-container').style.display = 'none';
-                    }
-                });
-            }
-        }
+
+    logoutBtn.addEventListener('click', () => {
+        localStorage.removeItem('adminPassword');
+        showNotification('Anda telah logout.', 'success');
+        setTimeout(() => {
+            window.location.reload();
+        }, 1500);
     });
-    document.getElementById('pricing-tiers-container').addEventListener('click', (e) => {
-        if (e.target.classList.contains('delete-tier-btn')) {
-            e.target.closest('.price-tier-item').remove();
-        }
-    });
-    
-    // Semua event listener dari kode asli Anda
+
     document.getElementById('create-key-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const createBtn = e.target.querySelector('button[type="submit"]');
@@ -377,99 +392,110 @@ document.addEventListener('DOMContentLoaded', () => {
             createBtn.textContent = 'Buat Kunci'; createBtn.disabled = false;
         }
     });
-    const showApiKeySuccessPopup = (newKey) => {
-        const expiryText = newKey.expires_at === 'permanent' ? 'Permanen' : formatFullDate(newKey.expires_at);
-        apiKeyDetailsContainer.innerHTML = `<div class="detail-item"><span class="detail-label">Kunci API</span><span class="detail-value">${newKey.name}</span></div><div class="detail-item"><span class="detail-label">Dibuat</span><span class="detail-value">${formatFullDate(newKey.created_at)}</span></div><div class="detail-item"><span class="detail-label">Kadaluwarsa</span><span class="detail-value">${expiryText}</span></div>`;
-        apiKeyTextToCopy = `Apikey: ${newKey.name}\nKadaluwarsa: ${expiryText}`;
-        openModal(apiKeySuccessModal);
-    };
+
     apiKeySuccessOkBtn.addEventListener('click', async () => {
         closeModal(apiKeySuccessModal);
-        try {
-            const newKeys = await callApi('getApiKeys'); renderApiKeys(newKeys);
-        } catch (error) { showNotification('Gagal memuat ulang daftar kunci.', 'error'); }
+        // Muat ulang daftar kunci setelah membuat yang baru
+        loadApiKeys();
     });
+    
     apiKeyCopyBtn.addEventListener('click', () => {
         navigator.clipboard.writeText(apiKeyTextToCopy).then(() => {
             apiKeyCopyBtn.innerHTML = '<i class="fas fa-check"></i> Tersalin!';
-            setTimeout(() => { apiKeyCopyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy'; }, 2000);
+            setTimeout(() => {
+                apiKeyCopyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
+            }, 2000);
+        }).catch(err => {
+            console.error('Gagal menyalin teks: ', err);
+            showNotification('Gagal menyalin.', 'error');
         });
     });
-    keyListContainer.addEventListener('click', async (e) => {
-        const button = e.target.closest('.delete-btn');
-        if (button) {
-            const key = button.dataset.key;
-            if (await showConfirmation('Hapus Kunci API?', `Anda yakin ingin menghapus kunci "${key}"?`)) {
-                try {
-                    const result = await callApi('deleteApiKey', { key });
-                    showNotification(result.message, 'success');
-                    renderApiKeys(await callApi('getApiKeys'));
-                } catch (error) { showNotification(`Gagal: ${error.message}`, 'error'); }
-            }
-        }
-    });
-    document.getElementById('permanent-key').addEventListener('change', (e) => {
-        document.getElementById('duration-section').style.display = e.target.checked ? 'none' : 'block';
-    });
+
     manageProjectsBtn.addEventListener('click', async () => {
         modalBody.innerHTML = '<p>Memuat proyek...</p>';
         openModal(projectModal);
         try {
-            const projects = await callApi('listProjects'); renderProjects(projects);
+            const projects = await callApi('listProjects');
+            renderProjects(projects);
         } catch (error) {
             showNotification(error.message, 'error');
             modalBody.innerHTML = `<p style="color: var(--error-color);">${error.message}</p>`;
         }
     });
+
     modalBody.addEventListener('click', async (e) => {
         const targetButton = e.target.closest('button.delete-btn');
         if (!targetButton) return;
         const repoName = targetButton.dataset.name;
         let action, title, message, originalText;
         if (targetButton.classList.contains('delete-repo-btn')) {
-            action = 'deleteRepo'; title = 'Hapus Repositori GitHub?'; message = `Tindakan ini akan menghapus permanen repositori '${repoName}' di GitHub.`;
+            action = 'deleteRepo'; title = 'Hapus Repositori GitHub?';
+            message = `Tindakan ini akan menghapus permanen repositori '${repoName}' di GitHub.`;
             originalText = 'Hapus Repo';
         } else if (targetButton.classList.contains('delete-vercel-btn')) {
-            action = 'deleteVercelProject'; title = 'Hapus Proyek Vercel?'; message = `Ini akan menghapus proyek '${repoName}' dari Vercel.`;
+            action = 'deleteVercelProject'; title = 'Hapus Proyek Vercel?';
+            message = `Ini akan menghapus proyek '${repoName}' dari Vercel, termasuk semua deployment.`;
             originalText = 'Hapus Vercel';
         } else { return; }
-        if (await showConfirmation(title, message)) {
+        const confirmed = await showConfirmation(title, message);
+        if (confirmed) {
             targetButton.textContent = 'Menghapus...'; targetButton.disabled = true;
             try {
                 const result = await callApi(action, { repoName: repoName, projectName: repoName });
                 showNotification(result.message, 'success');
-                targetButton.closest('.repo-item').remove();
+                // Refresh project list after deletion
+                manageProjectsBtn.click();
             } catch (error) {
                 showNotification(error.message, 'error');
                 targetButton.textContent = originalText; targetButton.disabled = false;
             }
         }
     });
+    
     manageDomainsBtn.addEventListener('click', async () => {
         cloudflareModalBody.innerHTML = '<p>Memuat zona dari Cloudflare...</p>';
         openModal(cloudflareModal);
         try {
-            const data = await callApi('listAllCloudflareZones'); renderCloudflareZones(data);
+            const zones = await callApi('listAllCloudflareZones');
+            renderCloudflareZones(zones);
         } catch (error) {
             showNotification(error.message, 'error');
             cloudflareModalBody.innerHTML = `<p style="color: var(--error-color);">Gagal memuat. Pastikan CLOUDFLARE_API_TOKEN sudah benar.</p>`;
         }
     });
-    cfSuccessOkBtn.addEventListener('click', () => { closeModal(cfSuccessModal); manageDomainsBtn.click(); });
+    
+    cfSuccessOkBtn.addEventListener('click', () => {
+        closeModal(cfSuccessModal);
+        manageDomainsBtn.click();
+    });
+
     cfNameserverList.addEventListener('click', (e) => {
         if (e.target.classList.contains('copy-ns-btn')) {
             const ns = e.target.dataset.ns;
-            navigator.clipboard.writeText(ns).then(() => { e.target.textContent = 'Tersalin!'; setTimeout(() => { e.target.textContent = 'Copy'; }, 2000); });
+            navigator.clipboard.writeText(ns).then(() => {
+                e.target.textContent = 'Tersalin!';
+                setTimeout(() => { e.target.textContent = 'Copy'; }, 2000);
+            });
         }
     });
+
     cloudflareModalBody.addEventListener('input', (e) => {
-        if (e.target.matches('#zone-search-input, #dns-search-input')) {
-            const searchTerm = e.target.value.toLowerCase();
-            const items = e.target.closest('#cloudflare-modal-body').querySelectorAll('.list-item');
-            items.forEach(item => { item.style.display = (item.dataset.searchTerm || '').includes(searchTerm) ? 'flex' : 'none'; });
+        const target = e.target;
+        if (target.matches('#zone-search-input, #dns-search-input')) {
+            const searchTerm = target.value.toLowerCase();
+            const listContainer = target.closest('#cloudflare-modal-body').querySelector('.list-item-container');
+            const items = listContainer.querySelectorAll('.list-item');
+            items.forEach(item => {
+                const itemSearchTerm = item.dataset.searchTerm || '';
+                item.style.display = itemSearchTerm.includes(searchTerm) ? 'flex' : 'none';
+            });
         }
     });
-    cloudflareModalBody.addEventListener('submit', (e) => { if (e.target.matches('.search-form, #add-domain-form')) e.preventDefault(); });
+
+    cloudflareModalBody.addEventListener('submit', (e) => {
+        if (e.target.matches('.search-form, #add-domain-form')) e.preventDefault();
+    });
+
     cloudflareModalBody.addEventListener('click', async (e) => {
         if (e.target.closest('#add-domain-form button')) {
             e.preventDefault();
@@ -481,7 +507,9 @@ document.addEventListener('DOMContentLoaded', () => {
             button.textContent = 'Menambahkan...'; button.disabled = true;
             try {
                 const result = await callApi('addCloudflareZone', { domainName });
-                closeModal(cloudflareModal); showCloudflareSuccessPopup(result); input.value = '';
+                closeModal(cloudflareModal);
+                showCloudflareSuccessPopup(result);
+                input.value = '';
             } catch (error) { showNotification(error.message, 'error');
             } finally { button.textContent = 'Tambah'; button.disabled = false; }
         }
@@ -489,22 +517,44 @@ document.addEventListener('DOMContentLoaded', () => {
             showDnsRecordsView(e.target.dataset.zoneId, e.target.dataset.zoneName);
         }
     });
-    projectModal.querySelector('.modal-close').addEventListener('click', () => closeModal(projectModal));
-    cloudflareModal.querySelector('.modal-close').addEventListener('click', () => closeModal(cloudflareModal));
-    logoutBtn.addEventListener('click', () => { localStorage.removeItem('adminPassword_v1'); showNotification('Anda telah logout.', 'success'); setTimeout(() => { window.location.reload(); }, 1500); });
 
-    // Inisialisasi Tema
-    const themeToggle = document.getElementById('theme-toggle');
-    const body = document.body;
-    const savedTheme = localStorage.getItem('theme_preference_v1') || 'light';
-    if (savedTheme === 'dark') { body.classList.add('dark-mode'); themeToggle.innerHTML = '<i class="fas fa-sun"></i>'; } 
-    else { body.classList.remove('dark-mode'); themeToggle.innerHTML = '<i class="fas fa-moon"></i>'; }
-    themeToggle.addEventListener('click', () => {
-        const newTheme = body.classList.contains('dark-mode') ? 'light' : 'dark';
-        localStorage.setItem('theme_preference_v1', newTheme);
-        if (newTheme === 'dark') { body.classList.add('dark-mode'); themeToggle.innerHTML = '<i class="fas fa-sun"></i>'; }
-        else { body.classList.remove('dark-mode'); themeToggle.innerHTML = '<i class="fas fa-moon"></i>'; }
+    keyListContainer.addEventListener('click', async (e) => {
+        const button = e.target.closest('.delete-btn');
+        if (button) {
+            const key = button.dataset.key;
+            const confirmed = await showConfirmation('Hapus Kunci API?', `Anda yakin ingin menghapus kunci "${key}"?`);
+            if (confirmed) {
+                try {
+                    const result = await callApi('deleteApiKey', { key });
+                    showNotification(result.message, 'success');
+                    // Muat ulang daftar kunci setelah menghapus
+                    loadApiKeys();
+                } catch (error) {
+                    showNotification(`Gagal: ${error.message}`, 'error');
+                }
+            }
+        }
     });
+
+    document.getElementById('permanent-key').addEventListener('change', (e) => {
+        document.getElementById('duration-section').style.display = e.target.checked ? 'none' : 'block';
+    });
+
+    // === Inisialisasi Aplikasi ===
+    const init = () => {
+        const themeToggle = document.getElementById('theme-toggle');
+        const body = document.body;
+        const savedTheme = localStorage.getItem('theme_preference_v1') || 'dark';
+        if (savedTheme === 'dark') { body.classList.add('dark-mode'); themeToggle.innerHTML = '<i class="fas fa-sun"></i>'; } 
+        else { body.classList.remove('dark-mode'); themeToggle.innerHTML = '<i class="fas fa-moon"></i>'; }
+        themeToggle.addEventListener('click', () => {
+            const newTheme = body.classList.contains('dark-mode') ? 'light' : 'dark';
+            localStorage.setItem('theme_preference_v1', newTheme);
+            if (newTheme === 'dark') { body.classList.add('dark-mode'); themeToggle.innerHTML = '<i class="fas fa-sun"></i>'; }
+            else { body.classList.remove('dark-mode'); themeToggle.innerHTML = '<i class="fas fa-moon"></i>'; }
+        });
+        setTimeout(tryAutoLogin, 700);
+    };
     
-    tryAutoLogin();
+    init();
 });
