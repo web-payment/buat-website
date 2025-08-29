@@ -15,16 +15,24 @@
             --success-color: #34c759; --error-color: #ff3b30; --pending-color: #ff9500;
         }
         body.dark-mode {
-            --bg-color: #000000; --card-bg: #1c1c1e; --border-color: #2c2c2e;
+            --bg-color: #000000; --card-bg: #1c1c1e; --border-color: #3a3a3c;
             --primary-color: #0A84FF; --text-color: #F5F5F7; --text-muted: #8e8e93;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: 'Poppins', sans-serif; background-color: var(--bg-color); color: var(--text-color);
-            display: flex; justify-content: center; align-items: center; min-height: 100vh;
+            display: flex; justify-content: center; align-items: flex-start; /* Ubah ke flex-start */
+            min-height: 100vh;
             padding: 20px; transition: background-color 0.3s, color 0.3s;
         }
-        .main-container { width: 100%; max-width: 600px; animation: fadeIn 0.5s ease-out; position: relative; margin-top: 50px; }
+        .main-container { 
+            width: 100%; 
+            max-width: 500px; /* Sedikit lebih ramping */
+            animation: fadeIn 0.5s ease-out; 
+            position: relative; 
+            margin-top: 60px; /* Beri ruang lebih di atas */
+            padding-bottom: 20px;
+        }
         
         .profile-picture-container {
             position: absolute; top: -50px; left: 50%;
@@ -39,23 +47,62 @@
         }
         
         .creator-card {
-            background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 20px;
-            padding: 30px 35px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1); margin-bottom: 30px;
-            padding-top: 70px; /* Beri ruang untuk profil picture */
+            background: var(--card-bg); 
+            border: 1px solid var(--border-color); 
+            border-radius: 24px; /* Lebih rounded */
+            padding: 25px; /* Padding konsisten */
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1); 
+            margin-bottom: 30px;
+            padding-top: 70px;
         }
-        h1 { font-size: 2em; font-weight: 700; text-align: center; }
-        h2 { text-align: center; font-weight: 600; margin-bottom: 20px; }
+        h1 { font-size: 1.8em; font-weight: 700; text-align: center; }
+        h2 { text-align: center; font-weight: 600; margin-bottom: 20px; font-size: 1.5em; }
         p { color: var(--text-muted); font-size: 1em; text-align: center; }
-        .form-group { margin-bottom: 25px; }
+        .form-group { margin-bottom: 20px; }
         label { display: block; font-weight: 500; font-size: 0.9em; margin-bottom: 8px; }
         input, select {
             width: 100%; padding: 14px; font-family: inherit; font-size: 1em; background-color: var(--bg-color);
             border: 1px solid var(--border-color); color: var(--text-color); border-radius: 12px; transition: all 0.2s;
         }
         input:focus, select:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2); }
-        .subdomain-wrapper { display: flex; align-items: center; }
-        .subdomain-wrapper select { border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: none; width: auto; }
-        #subdomain-name { border-top-right-radius: 0; border-bottom-right-radius: 0; }
+        
+        /* === [DIUBAH] Pemisahan Input Domain === */
+        .subdomain-wrapper { 
+            display: flex; 
+            align-items: center; 
+            background-color: var(--bg-color);
+            border: 1px solid var(--border-color);
+            border-radius: 12px;
+            overflow: hidden; /* Penting untuk radius */
+        }
+        .subdomain-wrapper:focus-within {
+             border-color: var(--primary-color);
+             box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
+        }
+        #subdomain-name { 
+            border: none;
+            border-radius: 0;
+            flex-grow: 1; /* Biarkan input nama memanjang */
+        }
+        #subdomain-name:focus {
+            box-shadow: none; /* Hapus shadow duplikat */
+        }
+        .subdomain-separator {
+            padding: 0 5px;
+            font-weight: 500;
+            color: var(--text-muted);
+        }
+        #root-domain-select {
+            border: none;
+            border-radius: 0;
+            width: auto; /* Lebar sesuai konten */
+            padding-right: 30px; /* Ruang untuk panah dropdown */
+        }
+        #root-domain-select:focus {
+            box-shadow: none; /* Hapus shadow duplikat */
+        }
+        /* === Akhir Perubahan === */
+
         #file-upload-label { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 14px; text-align: center; cursor: pointer; border: 2px dashed var(--border-color); border-radius: 12px; }
         #website-file { display: none; }
         button { cursor: pointer; font-family: inherit; }
@@ -92,34 +139,18 @@
         }
         .modal-info-box i { color: var(--primary-color); }
 
-        /* === [DIUBAH] Notifikasi Gaya iPhone === */
         #toast-notification {
-            position: fixed;
-            top: 15px; /* Sedikit lebih tinggi */
-            left: 50%;
-            transform: translate(-50%, -150%);
-            z-index: 9999;
-            padding: 10px 20px; /* Disesuaikan agar lebih ramping */
-            border-radius: 999px; /* Membuat bentuk kapsul */
-            font-size: 0.9em;
-            font-weight: 500;
-            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
-            opacity: 0;
+            position: fixed; top: 15px; left: 50%; transform: translate(-50%, -150%);
+            z-index: 9999; padding: 10px 20px; border-radius: 999px; font-size: 0.9em;
+            font-weight: 500; box-shadow: 0 8px 25px rgba(0,0,0,0.15); opacity: 0;
             transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.5s ease;
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            pointer-events: none;
-            background-color: rgba(30, 30, 30, 0.75); /* Sedikit lebih gelap */
-            backdrop-filter: blur(15px);
-            -webkit-backdrop-filter: blur(15px);
-            color: #fff;
-            border: 1px solid rgba(255, 255, 255, 0.1); /* Garis tepi tipis */
+            display: flex; align-items: center; gap: 10px; pointer-events: none;
+            background-color: rgba(30, 30, 30, 0.75); backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px); color: #fff; border: 1px solid rgba(255, 255, 255, 0.1);
         }
         #toast-notification.show { opacity: 1; transform: translate(-50%, 0); }
         #toast-notification.success { background-color: rgba(48, 209, 88, 0.8); }
         #toast-notification.error { background-color: rgba(255, 69, 58, 0.8); }
-        /* === Akhir Perubahan Notifikasi === */
 
         .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--bg-color); z-index: 10000; display: flex; justify-content: center; align-items: center; opacity: 1; transition: opacity 0.5s ease; }
         .loading-overlay.hidden { opacity: 0; pointer-events: none; }
@@ -176,11 +207,12 @@
                 <p>Unggah proyek Anda dan langsung publikasikan.</p>
             </div>
             <form id="creator-form">
-                <!-- === [DIUBAH] Urutan Form Disesuaikan === -->
                 <div class="form-group">
                     <label for="subdomain-name">Masukan Nama & Pilih Domain</label>
+                    <!-- === [DIUBAH] Wrapper Baru untuk Input Domain === -->
                     <div class="subdomain-wrapper">
                         <input type="text" id="subdomain-name" placeholder="toko-saya" required>
+                        <span class="subdomain-separator">.</span>
                         <select id="root-domain-select" required>
                             <option value="">Memuat...</option>
                         </select>
@@ -201,7 +233,6 @@
                     <label for="user-api-key">Masukan API Key</label>
                     <input type="password" id="user-api-key" placeholder="••••••••••••••••" required>
                 </div>
-                <!-- === Akhir Perubahan Urutan === -->
                 
                 <button type="submit" id="create-btn" class="button-primary">
                     <span id="btn-text">Buat Website</span>
