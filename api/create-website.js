@@ -182,7 +182,6 @@ async function handleCreateWebsite(request, response) {
         }
         
         const repoName = subdomain;
-        // Cek duplikasi di Vercel & GitHub
         const vercelCheckRes = await fetch(`${VERCEL_API_BASE}/v9/projects/${repoName}${TEAM_QUERY}`, { headers: VERCEL_HEADERS });
         if (vercelCheckRes.ok) throw new Error(`Nama proyek "${repoName}" sudah digunakan di Vercel.`);
         try {
@@ -202,22 +201,18 @@ async function handleCreateWebsite(request, response) {
             await fsPromises.rename(uploadedFile.filepath, path.join(extractDir, "index.html"));
         } else throw new Error("Format file tidak didukung.");
         
-        // [PERBAIKAN TOTAL] Logika baru untuk menentukan folder utama (uploadRoot)
         let uploadRoot = extractDir;
         const itemsInExtractDir = await fsPromises.readdir(extractDir);
         if (itemsInExtractDir.length === 1) {
             const singleItemPath = path.join(extractDir, itemsInExtractDir[0]);
             const stats = await fsPromises.stat(singleItemPath);
             if (stats.isDirectory()) {
-                // Jika di dalam ZIP hanya ada satu folder, maka folder itulah yang menjadi root
                 uploadRoot = singleItemPath;
-                console.log(`Ditemukan satu folder di dalam ZIP, root diatur ke: ${uploadRoot}`);
             }
         }
         
         await octokit.repos.createForAuthenticatedUser({ name: repoName, private: false });
 
-        // Deteksi Proyek Node.js dan validasi
         const packageJsonPath = path.join(uploadRoot, 'package.json');
         const indexHtmlPath = path.join(uploadRoot, 'index.html');
         let isNodeProject = fs.existsSync(packageJsonPath);
@@ -238,7 +233,6 @@ async function handleCreateWebsite(request, response) {
                 await fsPromises.writeFile(vercelJsonPath, JSON.stringify(vercelConfig, null, 2));
             }
         } else if (!fs.existsSync(indexHtmlPath)) {
-            // Jika bukan proyek Node dan tidak ada index.html, upload tidak valid
             throw new Error("Upload tidak valid. Harus berupa proyek statis (mengandung index.html) atau proyek Node.js (mengandung package.json).");
         }
         
@@ -272,19 +266,56 @@ async function handleCreateWebsite(request, response) {
         });
 
         const finalDomain = `${subdomain}.${rootDomain}`;
-        await fetch(`${VERCEL_API_BASE}/v10/projects/${repoName}/domains${TEAM_QUERY}`, {
+        const addDomainRes = await fetch(`${VERCEL_API_BASE}/v10/projects/${repoName}/domains${TEAM_QUERY}`, {
             method: "POST", headers: VERCEL_HEADERS, body: JSON.stringify({ name: finalDomain })
         });
-        
+        const addDomainResult = await addDomainRes.json();
+
         const allDomains = JSON.parse(fs.readFileSync(path.resolve('./data/domains.json'), 'utf-8'));
         const domainInfo = allDomains[rootDomain];
         if (!domainInfo) throw new Error("Konfigurasi untuk domain utama tidak ditemukan.");
-        
         const cfAuthHeader = { "Authorization": `Bearer ${domainInfo.apitoken}` };
+
+        // [PERBAIKAN] Otomatisasi Verifikasi Domain Vercel dengan Jeda Waktu
+        if (addDomainResult.error?.code === 'domain_requires_verification') {
+            console.log(`Domain ${finalDomain} memerlukan verifikasi. Memulai proses otomatis...`);
+            
+            const verificationData = addDomainResult.error.verification[0];
+            const txtName = verificationData.domain.replace(`.${domainInfo.name}`, '');
+            const txtValue = verificationData.value;
+            
+            console.log(`Membuat record TXT di Cloudflare: Name: ${txtName}, Value: ${txtValue}`);
+            await fetch(`https://api.cloudflare.com/client/v4/zones/${domainInfo.zone}/dns_records`, {
+                method: "POST",
+                headers: { ...cfAuthHeader, "Content-Type": "application/json" },
+                body: JSON.stringify({ type: 'TXT', name: txtName, content: txtValue, ttl: 1 })
+            });
+            console.log(`Record TXT verifikasi berhasil dibuat di Cloudflare.`);
+
+            // Memberikan jeda waktu 30 detik agar record TXT terpropagasi
+            console.log('Memberikan jeda 30 detik agar record TXT terpropagasi...');
+            await new Promise(resolve => setTimeout(resolve, 30000));
+
+            console.log('Meminta Vercel untuk melakukan verifikasi...');
+            const verifyRes = await fetch(`${VERCEL_API_BASE}/v9/projects/${repoName}/domains/${finalDomain}/verify${TEAM_QUERY}`, {
+                method: "POST",
+                headers: VERCEL_HEADERS
+            });
+            const verifyResult = await verifyRes.json();
+            
+            if (verifyResult.verified) {
+                console.log(`Domain ${finalDomain} berhasil diverifikasi secara otomatis.`);
+            } else {
+                console.log(`Verifikasi Vercel belum berhasil, mungkin butuh waktu lebih lama. Proses dilanjutkan.`);
+            }
+        }
+        
         const recordsRes = await fetch(`https://api.cloudflare.com/client/v4/zones/${domainInfo.zone}/dns_records?name=${finalDomain}`, { headers: cfAuthHeader }).then(res => res.json());
         if (recordsRes.success && recordsRes.result.length > 0) {
             for (const record of recordsRes.result) {
-                await fetch(`https://api.cloudflare.com/client/v4/zones/${domainInfo.zone}/dns_records/${record.id}`, { method: 'DELETE', headers: cfAuthHeader });
+                if (record.type === 'A' || record.type === 'CNAME') {
+                    await fetch(`https://api.cloudflare.com/client/v4/zones/${domainInfo.zone}/dns_records/${record.id}`, { method: 'DELETE', headers: cfAuthHeader });
+                }
             }
         }
 
