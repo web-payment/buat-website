@@ -36,6 +36,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const discountDateInput = document.getElementById('discount-end-date');
     const logoutBtn = document.getElementById('logout-btn');
 
+    // *** ELEMEN UI BARU UNTUK DOMAIN JSON ***
+    const addDomainJsonForm = document.getElementById('add-domain-json-form');
+    const domainJsonListContainer = document.getElementById('domain-json-list-container');
+
+
     let apiKeyTextToCopy = '';
 
     // === Fungsi Bantuan & Logika Umum ===
@@ -63,11 +68,10 @@ document.addEventListener('DOMContentLoaded', () => {
     projectModal.addEventListener('click', (e) => { if (e.target === projectModal) closeModal(projectModal); });
     cloudflareModal.querySelector('.modal-close').addEventListener('click', () => closeModal(cloudflareModal));
     
-    // [PERBAIKAN] Fungsi showConfirmation diubah untuk menerima teks tombol custom
     const showConfirmation = (title, message, confirmText = 'Hapus') => {
         confirmTitle.textContent = title;
         confirmMessage.textContent = message;
-        confirmBtnYes.textContent = confirmText; // Baris ini mengubah teks tombol
+        confirmBtnYes.textContent = confirmText;
         openModal(confirmationModal);
         return new Promise((resolve) => {
             confirmBtnYes.onclick = () => { closeModal(confirmationModal); resolve(true); };
@@ -81,31 +85,6 @@ document.addEventListener('DOMContentLoaded', () => {
         const notes = "Harap simpan detail kunci ini dengan baik. Informasi ini bersifat rahasia dan tidak akan ditampilkan lagi demi keamanan Anda.";
         apiKeyTextToCopy = `Ini adalah data apikey anda\n-------------------\nApikey: ${newKey.name}\nTanggal buat: ${formatFullDate(newKey.created_at)}\nTanggal kadaluarsa: ${expiryText}\n-------------------\nNotes:\n${notes}`;
         openModal(apiKeySuccessModal);
-    };
-
-    const showZoneTokenSuccessPopup = (zoneName, token) => {
-        const modal = document.getElementById('zone-token-success-modal');
-        const nameContainer = document.getElementById('zone-token-name');
-        const tokenContainer = document.getElementById('zone-token-value');
-        const copyBtn = document.getElementById('zone-token-copy-btn');
-        const okBtn = document.getElementById('zone-token-ok-btn');
-
-        nameContainer.textContent = zoneName;
-        tokenContainer.textContent = token;
-        copyBtn.dataset.token = token;
-
-        copyBtn.onclick = () => {
-             navigator.clipboard.writeText(token).then(() => {
-                copyBtn.innerHTML = '<i class="fas fa-check"></i> Tersalin!';
-                setTimeout(() => {
-                    copyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy Token';
-                }, 2000);
-            });
-        };
-
-        okBtn.onclick = () => closeModal(modal);
-        
-        openModal(modal);
     };
 
     // === Logika API ===
@@ -148,8 +127,45 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         modalBody.innerHTML = `<ul class="list-item-container">${projectHtml}</ul>`;
     };
+
+    // *** FUNGSI RENDER BARU UNTUK domains.json ***
+    const renderJsonDomains = (domains) => {
+        domainJsonListContainer.innerHTML = '';
+        if (Object.keys(domains).length === 0) {
+            domainJsonListContainer.innerHTML = '<p>Belum ada domain yang ditambahkan ke file JSON.</p>';
+            return;
+        }
+        for (const domain in domains) {
+            const domainData = domains[domain];
+            const item = document.createElement('div');
+            item.className = 'key-item';
+            // Sembunyikan sebagian token untuk keamanan
+            const hiddenToken = domainData.apitoken.slice(0, 4) + '...' + domainData.apitoken.slice(-4);
+            item.innerHTML = `
+                <div class="key-info" style="flex-grow: 1;">
+                    <span class="key-name">${domain}</span>
+                    <span class="key-expiry" style="font-family: monospace; font-size: 0.8em;">Zone: ${domainData.zone}</span>
+                    <span class="key-expiry" style="font-family: monospace; font-size: 0.8em;">Token: ${hiddenToken}</span>
+                </div>
+                <button class="delete-btn" data-domain="${domain}"><i class="fas fa-trash-alt"></i></button>
+            `;
+            domainJsonListContainer.appendChild(item);
+        }
+    };
+
+    // *** FUNGSI BARU UNTUK MEMUAT DAN MERENDER DOMAIN JSON ***
+    const loadAndRenderJsonDomains = async () => {
+        domainJsonListContainer.innerHTML = '<p>Memuat domain dari JSON...</p>';
+        try {
+            const domains = await callApi('getDomainsFromJson');
+            renderJsonDomains(domains);
+        } catch (error) {
+            showNotification(error.message, 'error');
+            domainJsonListContainer.innerHTML = `<p style="color: var(--error-color);">${error.message}</p>`;
+        }
+    };
     
-    // === Logika Cloudflare ===
+    // === Logika Cloudflare (TETAP SAMA) ===
     const showCloudflareSuccessPopup = (data) => {
         cfSuccessMessage.innerHTML = `Domain <strong>${data.domain}</strong> berhasil ditambahkan ke akun Cloudflare Anda.`;
         cfNameserverList.innerHTML = data.nameservers.map(ns => `<li class="nameserver-item"><span>${ns}</span><button class="copy-ns-btn" data-ns="${ns}">Copy</button></li>`).join('');
@@ -204,19 +220,17 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     };
-    
     const renderCloudflareZones = (zones) => {
         cloudflareModalTitle.innerHTML = `Manajemen Zona Cloudflare <span class="item-count">${zones.length}</span>`;
         let listHtml = zones.map(zone => `
-            <li class="list-item" data-search-term="${zone.name.toLowerCase()}">
-                <input type="checkbox" class="item-checkbox" value="${zone.id}" data-name="${zone.name}">
-                <div class="item-info">
-                    <strong>${zone.name}</strong>
-                    <span>Status: ${zone.status}</span>
-                </div>
-                <button class="manage-dns-btn" data-zone-id="${zone.id}" data-zone-name="${zone.name}">Kelola DNS</button>
-                <button class="create-zone-token-btn" data-zone-id="${zone.id}" data-zone-name="${zone.name}">Buat Token</button>
-            </li>`).join('');
+    <li class="list-item" data-search-term="${zone.name.toLowerCase()}">
+        <input type="checkbox" class="item-checkbox" value="${zone.id}" data-name="${zone.name}">
+        <div class="item-info">
+            <strong>${zone.name}</strong>
+            <span>Status: ${zone.status}</span>
+        </div>
+        <button class="manage-dns-btn" data-zone-id="${zone.id}" data-zone-name="${zone.name}">Kelola DNS</button>
+    </li>`).join('');
 
         cloudflareModalBody.innerHTML = `
             <div class="list-toolbar">
@@ -296,6 +310,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 navButtons.forEach(btn => btn.classList.remove('active'));
                 document.getElementById(targetPageId).style.display = 'block';
                 button.classList.add('active');
+
+                // *** BARU: Muat daftar domain saat tab diaktifkan ***
+                if (targetPageId === 'page-domains-json') {
+                    loadAndRenderJsonDomains();
+                }
             });
         });
     };
@@ -524,31 +543,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.classList.contains('manage-dns-btn')) {
             showDnsRecordsView(e.target.dataset.zoneId, e.target.dataset.zoneName);
         }
-        
-        if (e.target.classList.contains('create-zone-token-btn')) {
-            const button = e.target;
-            const zoneId = button.dataset.zoneId;
-            const zoneName = button.dataset.zoneName;
-            
-            // [PERBAIKAN] Mengubah teks tombol 'Hapus' menjadi 'Lanjutkan'
-            const message = `Anda akan membuat API Token baru yang hanya bisa mengakses zona "${zoneName}". Token lama (jika ada) di file data akan ditimpa. Lanjutkan?`;
-            const confirmed = await showConfirmation('Buat API Token?', message, 'Lanjutkan');
-
-            if (confirmed) {
-                button.textContent = 'Membuat...';
-                button.disabled = true;
-                try {
-                    const result = await callApi('createTokenForExistingZone', { zoneId, zoneName });
-                    showNotification(result.message, 'success');
-                    showZoneTokenSuccessPopup(result.zoneName, result.apiToken);
-                } catch (error) {
-                    showNotification(error.message, 'error');
-                } finally {
-                    button.textContent = 'Buat Token';
-                    button.disabled = false;
-                }
-            }
-        }
     });
 
     keyListContainer.addEventListener('click', async (e) => {
@@ -569,23 +563,69 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
+    // *** EVENT LISTENER BARU UNTUK MENAMBAHKAN DOMAIN KE JSON ***
+    addDomainJsonForm.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const button = e.target.querySelector('button[type="submit"]');
+        const domainInput = document.getElementById('json-domain-name');
+        const zoneInput = document.getElementById('json-zone-id');
+        const tokenInput = document.getElementById('json-api-token');
+
+        const data = {
+            domainName: domainInput.value.trim(),
+            zoneId: zoneInput.value.trim(),
+            apiToken: tokenInput.value.trim()
+        };
+
+        if (!data.domainName || !data.zoneId || !data.apiToken) {
+            return showNotification('Semua field harus diisi.', 'error');
+        }
+
+        button.textContent = 'Menambahkan...';
+        button.disabled = true;
+
+        try {
+            const result = await callApi('addDomainToJson', data);
+            showNotification(result.message, 'success');
+            addDomainJsonForm.reset(); // Bersihkan form
+            await loadAndRenderJsonDomains(); // Muat ulang list
+        } catch (error) {
+            showNotification(error.message, 'error');
+        } finally {
+            button.textContent = 'Tambah Domain ke JSON';
+            button.disabled = false;
+        }
+    });
+
+    // *** EVENT LISTENER BARU UNTUK MENGHAPUS DOMAIN DARI JSON ***
+    domainJsonListContainer.addEventListener('click', async (e) => {
+        const button = e.target.closest('.delete-btn');
+        if (button) {
+            const domainName = button.dataset.domain;
+            const confirmed = await showConfirmation(
+                'Hapus Domain dari JSON?',
+                `Anda yakin ingin menghapus '${domainName}' dari file domains.json? Tindakan ini tidak dapat diurungkan.`
+            );
+
+            if (confirmed) {
+                try {
+                    const result = await callApi('deleteDomainFromJson', { domainName });
+                    showNotification(result.message, 'success');
+                    await loadAndRenderJsonDomains(); // Muat ulang list
+                } catch (error) {
+                    showNotification(`Gagal menghapus: ${error.message}`, 'error');
+                }
+            }
+        }
+    });
+
     document.getElementById('permanent-key').addEventListener('change', (e) => {
         document.getElementById('duration-section').style.display = e.target.checked ? 'none' : 'block';
     });
 
     // === Inisialisasi Aplikasi ===
     const init = () => {
-        const themeToggle = document.getElementById('theme-toggle');
-        const body = document.body;
-        const savedTheme = localStorage.getItem('theme_preference_v1') || 'light';
-        if (savedTheme === 'dark') { body.classList.add('dark-mode'); themeToggle.innerHTML = '<i class="fas fa-sun"></i>'; } 
-        else { body.classList.remove('dark-mode'); themeToggle.innerHTML = '<i class="fas fa-moon"></i>'; }
-        themeToggle.addEventListener('click', () => {
-            const newTheme = body.classList.contains('dark-mode') ? 'light' : 'dark';
-            localStorage.setItem('theme_preference_v1', newTheme);
-            if (newTheme === 'dark') { body.classList.add('dark-mode'); themeToggle.innerHTML = '<i class="fas fa-sun"></i>'; }
-            else { body.classList.remove('dark-mode'); themeToggle.innerHTML = '<i class="fas fa-moon"></i>'; }
-        });
+        // Logika tema (jika ada) bisa ditaruh di sini
         setupNavigation();
         setTimeout(tryAutoLogin, 700);
     };
