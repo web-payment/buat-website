@@ -63,9 +63,11 @@ document.addEventListener('DOMContentLoaded', () => {
     projectModal.addEventListener('click', (e) => { if (e.target === projectModal) closeModal(projectModal); });
     cloudflareModal.querySelector('.modal-close').addEventListener('click', () => closeModal(cloudflareModal));
     
-    const showConfirmation = (title, message) => {
+    // [PERBAIKAN] Fungsi showConfirmation diubah untuk menerima teks tombol custom
+    const showConfirmation = (title, message, confirmText = 'Hapus') => {
         confirmTitle.textContent = title;
         confirmMessage.textContent = message;
+        confirmBtnYes.textContent = confirmText; // Baris ini mengubah teks tombol
         openModal(confirmationModal);
         return new Promise((resolve) => {
             confirmBtnYes.onclick = () => { closeModal(confirmationModal); resolve(true); };
@@ -81,7 +83,6 @@ document.addEventListener('DOMContentLoaded', () => {
         openModal(apiKeySuccessModal);
     };
 
-    // [FUNGSI BARU]
     const showZoneTokenSuccessPopup = (zoneName, token) => {
         const modal = document.getElementById('zone-token-success-modal');
         const nameContainer = document.getElementById('zone-token-name');
@@ -204,7 +205,6 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
     
-    // [MODIFIKASI]
     const renderCloudflareZones = (zones) => {
         cloudflareModalTitle.innerHTML = `Manajemen Zona Cloudflare <span class="item-count">${zones.length}</span>`;
         let listHtml = zones.map(zone => `
@@ -504,7 +504,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if (e.target.matches('.search-form, #add-domain-form')) e.preventDefault();
     });
 
-    // [MODIFIKASI]
     cloudflareModalBody.addEventListener('click', async (e) => {
         if (e.target.closest('#add-domain-form button')) {
             e.preventDefault();
@@ -526,16 +525,14 @@ document.addEventListener('DOMContentLoaded', () => {
             showDnsRecordsView(e.target.dataset.zoneId, e.target.dataset.zoneName);
         }
         
-        // [LOGIKA BARU DITAMBAHKAN DI SINI]
         if (e.target.classList.contains('create-zone-token-btn')) {
             const button = e.target;
             const zoneId = button.dataset.zoneId;
             const zoneName = button.dataset.zoneName;
             
-            const confirmed = await showConfirmation(
-                'Buat API Token?',
-                `Anda akan membuat API Token baru yang hanya bisa mengakses zona "${zoneName}". Token lama (jika ada) di file data akan ditimpa. Lanjutkan?`
-            );
+            // [PERBAIKAN] Mengubah teks tombol 'Hapus' menjadi 'Lanjutkan'
+            const message = `Anda akan membuat API Token baru yang hanya bisa mengakses zona "${zoneName}". Token lama (jika ada) di file data akan ditimpa. Lanjutkan?`;
+            const confirmed = await showConfirmation('Buat API Token?', message, 'Lanjutkan');
 
             if (confirmed) {
                 button.textContent = 'Membuat...';
