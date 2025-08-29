@@ -89,6 +89,7 @@
         .status { padding: 4px 10px; border-radius: 20px; font-size: 0.8em; font-weight: 500; color: white;}
         .status.pending { background-color: var(--pending-color); }
         .status.success { background-color: var(--success-color); }
+        
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); display: none; justify-content: center; align-items: center; z-index: 1000; opacity: 0; transition: opacity 0.3s; backdrop-filter: blur(5px); }
         .modal-overlay.show { display: flex; opacity: 1; }
         .modal-content { background: var(--card-bg); border-radius: 20px; padding: 25px; width: 90%; max-width: 500px; transform: scale(0.9); transition: transform 0.3s; opacity: 0; }
@@ -109,9 +110,6 @@
         
         .upload-guide-link { text-align: center; margin-top: -10px; margin-bottom: 25px; }
         .upload-guide-link a { color: var(--primary-color); text-decoration: none; font-size: 0.9em; }
-        .guide-content ul { list-style: none; padding-left: 0; }
-        .guide-content li { display: flex; align-items: flex-start; gap: 15px; margin-bottom: 15px; text-align: left;}
-        .guide-content i { color: var(--primary-color); font-size: 1.2em; margin-top: 4px; }
         
         .confirmation-buttons { display: flex; border-top: 1px solid var(--border-color); margin: 20px -25px -25px; }
         .confirmation-buttons button { flex: 1; padding: 14px; border-radius: 0; background: none; font-size: 1.05em; font-weight: 500; }
@@ -134,11 +132,6 @@
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
         @keyframes pulse { 0% {transform: scale(1);} 50% {transform: scale(1.1);} 100% {transform: scale(1);} }
         @keyframes spin { to { transform: rotate(360deg); } }
-
-        @media (max-width: 640px) {
-            body { padding: 10px; align-items: flex-start; }
-            .content-card { padding: 20px; }
-        }
     </style>
 </head>
 <body>
@@ -155,25 +148,10 @@
             <h2 class="card-title">Buat Website Baru</h2>
             <p class="card-subtitle">Unggah proyek Anda dan langsung publikasikan.</p>
             <form id="creator-form">
-                <div class="form-group">
-                    <label for="subdomain-name">Nama Website Anda</label>
-                    <div class="subdomain-wrapper">
-                        <input type="text" id="subdomain-name" placeholder="toko-saya" required>
-                        <select id="root-domain-select" required><option value="">Memuat...</option></select>
-                    </div>
-                </div>
-                <div class="form-group">
-                    <label for="website-file">File Proyek (.zip atau .html)</label>
-                    <label for="website-file" id="file-upload-label"><i class="fas fa-cloud-upload-alt"></i><span id="file-name-span">Pilih file...</span></label>
-                    <input type="file" id="website-file" accept=".zip,.html" required>
-                </div>
-                <div class="upload-guide-link">
-                    <a href="#" id="show-guide-link">Lihat Panduan Upload</a>
-                </div>
-                <div class="form-group">
-                    <label for="user-api-key">API Key</label>
-                    <input type="password" id="user-api-key" placeholder="••••••••••••••••" required>
-                </div>
+                <div class="form-group"><label for="subdomain-name">Nama Website Anda</label><div class="subdomain-wrapper"><input type="text" id="subdomain-name" placeholder="toko-saya" required><select id="root-domain-select" required><option value="">Memuat...</option></select></div></div>
+                <div class="form-group"><label for="website-file">File Proyek (.zip)</label><label for="website-file" id="file-upload-label"><i class="fas fa-cloud-upload-alt"></i><span id="file-name-span">Pilih file...</span></label><input type="file" id="website-file" accept=".zip,.html" required></div>
+                <div class="upload-guide-link"><a href="#" id="show-guide-link">Lihat Panduan Upload</a></div>
+                <div class="form-group"><label for="user-api-key">API Key</label><input type="password" id="user-api-key" placeholder="••••••••••••••••" required></div>
                 <button type="submit" id="create-btn" class="button-primary"><span id="btn-text">Buat Website</span></button>
             </form>
         </div>
@@ -181,9 +159,7 @@
         <div class="content-card">
             <h2 class="card-title">Harga API Key</h2>
             <p class="card-subtitle">Lihat daftar paket API Key yang tersedia.</p>
-            <button id="show-pricing-btn" class="button-primary">
-                <i class="fas fa-tags"></i> Lihat Pilihan Paket
-            </button>
+            <button id="show-pricing-btn" class="button-primary"><i class="fas fa-tags"></i> Lihat Pilihan Paket</button>
         </div>
 
         <div id="created-sites-container" class="content-card">
@@ -194,69 +170,19 @@
     </div>
     
     <div id="guide-modal" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-header">
-                <i class="fas fa-info-circle"></i>
-                <h2>Panduan Upload</h2>
-            </div>
-            <div class="modal-body">
-                 <ul>
-                    <li><i class="fas fa-file-archive"></i><div><strong>Batas Ukuran File: 4.5 MB</strong><p>Pastikan file .zip Anda tidak lebih dari 4.5 MB.</p></div></li>
-                    <li><i class="fas fa-user-secret"></i><div><strong>Dilarang Mengunggah Data Sensitif</strong><p>Jangan menaruh API Key atau password di dalam file.</p></div></li>
-                    <li><i class="fas fa-gavel"></i><div><strong>Konten Ilegal Dilarang</strong><p>Dilarang keras mengunggah konten yang melanggar hukum.</p></div></li>
-                </ul>
-            </div>
-            <button id="guide-close-btn" class="button-primary" style="margin: 0 25px 25px;">Saya Mengerti</button>
-        </div>
+        <div class="modal-content"><div class="modal-header"><i class="fas fa-info-circle"></i><h2>Panduan Upload</h2></div><div class="modal-body"><ul><li><i class="fas fa-file-archive"></i><div><strong>Batas Ukuran File: 4.5 MB</strong><p>Pastikan file .zip Anda tidak lebih dari 4.5 MB.</p></div></li><li><i class="fas fa-user-secret"></i><div><strong>Data Sensitif Dilarang</strong><p>Jangan menaruh API Key atau password di dalam file.</p></div></li><li><i class="fas fa-gavel"></i><div><strong>Konten Ilegal Dilarang</strong><p>Dilarang keras mengunggah konten yang melanggar hukum.</p></div></li></ul></div><button id="guide-close-btn" class="button-primary" style="margin: 0 25px 25px;">Saya Mengerti</button></div>
     </div>
 
     <div id="details-modal" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-header">
-                <i class="fas fa-link"></i>
-                <h2>Detail Website</h2>
-            </div>
-            <div class="modal-body-item">
-                <strong>URL Kustom Anda:</strong>
-                <a href="#" target="_blank" id="modal-custom-url"></a>
-            </div>
-            <div class="modal-body-item">
-                <strong>URL Vercel:</strong>
-                <a href="#" target="_blank" id="modal-vercel-url"></a>
-            </div>
-            <button id="modal-check-status-btn" class="button-primary status pending" style="width: 100%;">Cek Status</button>
-            <button id="modal-close-btn" class="button-primary" style="margin-top: 10px; background-color: var(--text-muted);">Tutup</button>
-        </div>
+        <div class="modal-content"><div class="modal-header"><i class="fas fa-link"></i><h2>Detail Website</h2></div><div class="modal-body-item"><strong>URL Kustom Anda:</strong><a href="#" target="_blank" id="modal-custom-url"></a></div><div class="modal-body-item"><strong>URL Vercel:</strong><a href="#" target="_blank" id="modal-vercel-url"></a></div><button id="modal-check-status-btn" class="button-primary status pending">Cek Status</button><button id="modal-close-btn" class="button-primary" style="margin-top: 10px; background-color: var(--text-muted);">Tutup</button></div>
     </div>
 
     <div id="confirmation-modal" class="modal-overlay">
-        <div class="modal-content" style="max-width: 350px;">
-             <h3 id="confirmation-modal-title" style="text-align: center; font-weight: 600; padding: 20px 20px 5px;">Konfirmasi</h3>
-             <p id="confirmation-modal-message" style="font-size: 0.9em; padding: 0 20px 20px; color: var(--text-muted); text-align: center; white-space: pre-wrap;">Apakah Anda yakin?</p>
-             <div class="confirmation-buttons">
-                <button id="confirm-btn-no">Batal</button>
-                <button id="confirm-btn-yes">Hapus</button>
-            </div>
-        </div>
+        <div class="modal-content" style="max-width: 350px;"><h3 id="confirmation-modal-title" style="text-align: center; font-weight: 600; padding: 20px 20px 5px;"></h3><p id="confirmation-modal-message" style="font-size: 0.9em; padding: 0 20px 20px; color: var(--text-muted); text-align: center;"></p><div class="confirmation-buttons"><button id="confirm-btn-no">Batal</button><button id="confirm-btn-yes">Hapus</button></div></div>
     </div>
     
     <div id="pricing-modal" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-header">
-                <i class="fas fa-tags"></i>
-                <h2>Pilihan Paket API Key</h2>
-            </div>
-            <div id="pricing-modal-body" style="padding: 15px; max-height: 60vh; overflow-y: auto;">
-                <div id="modal-discount-banner" class="discount-banner" style="display: none; margin-left: 10px; margin-right: 10px;">
-                    <h3>🔥 PROMO KILAT! 🔥</h3>
-                    <p>Berakhir dalam:</p>
-                    <div id="modal-countdown-timer">00:00:00:00</div>
-                </div>
-                <div id="pricing-modal-list">
-                    </div>
-            </div>
-            <button id="pricing-modal-close-btn" class="button-primary" style="margin: 0 25px 25px; background-color: var(--text-muted);">Tutup</button>
-        </div>
+        <div class="modal-content"><div class="modal-header"><i class="fas fa-tags"></i><h2>Pilihan Paket API Key</h2></div><div id="pricing-modal-body" style="padding: 15px; max-height: 60vh; overflow-y: auto;"><div id="modal-discount-banner" class="discount-banner" style="display: none; margin: 0 10px 15px;"><h3 style="margin-bottom: 5px;">🔥 PROMO KILAT! 🔥</h3><p>Berakhir dalam:</p><div id="modal-countdown-timer">00:00:00:00</div></div><div id="pricing-modal-list"></div></div><button id="pricing-modal-close-btn" class="button-primary" style="margin: 0 25px 25px; background-color: var(--text-muted);">Tutup</button></div>
     </div>
 
     <script src="script.js"></script>

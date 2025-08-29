@@ -42,7 +42,7 @@ document.addEventListener('DOMContentLoaded', () => {
         clearTimeout(toastTimeout);
         const iconMap = { success: 'fa-check-circle', error: 'fa-times-circle', info: 'fa-info-circle' };
         toast.innerHTML = `<i class="fas ${iconMap[type]}"></i> ${message}`;
-        toast.className = '';
+        toast.className = 'notification';
         toast.classList.add(type, 'show');
         toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 4000);
     };
@@ -374,6 +374,13 @@ document.addEventListener('DOMContentLoaded', () => {
         } catch (error) {
             showToast(error.message, 'error');
             updateModalStatus('pending');
+        } finally {
+             // Re-enable button even on failure after a short delay
+            setTimeout(() => {
+                if(btn.disabled) {
+                    updateModalStatus('pending');
+                }
+            }, 2000);
         }
     });
 
