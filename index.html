@@ -85,34 +85,41 @@
         .modal-body-item strong { display: block; color: var(--text-muted); font-size: 0.9em; margin-bottom: 5px;}
         .modal-body-item a { color: var(--primary-color); text-decoration: none; word-break: break-all; }
 
-        /* === [BARU] Kotak Info di dalam Modal === */
         .modal-info-box {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            background-color: var(--bg-color);
-            padding: 12px;
-            border-radius: 10px;
-            font-size: 0.85em;
-            color: var(--text-muted);
-            margin-bottom: 20px;
-            border: 1px solid var(--border-color);
+            display: flex; align-items: center; gap: 10px; background-color: var(--bg-color);
+            padding: 12px; border-radius: 10px; font-size: 0.85em; color: var(--text-muted);
+            margin-bottom: 20px; border: 1px solid var(--border-color);
         }
         .modal-info-box i { color: var(--primary-color); }
 
+        /* === [DIUBAH] Notifikasi Gaya iPhone === */
         #toast-notification {
-            position: fixed; top: 20px; left: 50%; transform: translate(-50%, -150%);
-            z-index: 9999; padding: 12px 20px; border-radius: 25px;
-            font-size: 0.9em; font-weight: 500;
-            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
-            opacity: 0; transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.5s ease;
-            display: flex; align-items: center; gap: 10px; pointer-events: none;
-            background-color: rgba(40, 40, 40, 0.7);
-            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); color: #fff;
+            position: fixed;
+            top: 15px; /* Sedikit lebih tinggi */
+            left: 50%;
+            transform: translate(-50%, -150%);
+            z-index: 9999;
+            padding: 10px 20px; /* Disesuaikan agar lebih ramping */
+            border-radius: 999px; /* Membuat bentuk kapsul */
+            font-size: 0.9em;
+            font-weight: 500;
+            box-shadow: 0 8px 25px rgba(0,0,0,0.15);
+            opacity: 0;
+            transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.5s ease;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            pointer-events: none;
+            background-color: rgba(30, 30, 30, 0.75); /* Sedikit lebih gelap */
+            backdrop-filter: blur(15px);
+            -webkit-backdrop-filter: blur(15px);
+            color: #fff;
+            border: 1px solid rgba(255, 255, 255, 0.1); /* Garis tepi tipis */
         }
         #toast-notification.show { opacity: 1; transform: translate(-50%, 0); }
-        #toast-notification.success { background-color: rgba(50, 215, 75, 0.85); }
-        #toast-notification.error { background-color: rgba(255, 69, 58, 0.85); }
+        #toast-notification.success { background-color: rgba(48, 209, 88, 0.8); }
+        #toast-notification.error { background-color: rgba(255, 69, 58, 0.8); }
+        /* === Akhir Perubahan Notifikasi === */
 
         .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--bg-color); z-index: 10000; display: flex; justify-content: center; align-items: center; opacity: 1; transition: opacity 0.5s ease; }
         .loading-overlay.hidden { opacity: 0; pointer-events: none; }
@@ -169,11 +176,36 @@
                 <p>Unggah proyek Anda dan langsung publikasikan.</p>
             </div>
             <form id="creator-form">
-                <div class="form-group"><label for="subdomain-name">Nama Website Anda</label><div class="subdomain-wrapper"><input type="text" id="subdomain-name" placeholder="toko-saya" required><select id="root-domain-select" required><option value="">Memuat...</option></select></div></div>
-                <div class="form-group"><label for="website-file">File Proyek (.zip)</label><label for="website-file" id="file-upload-label"><i class="fas fa-cloud-upload-alt"></i><span id="file-name-span">Pilih file...</span></label><input type="file" id="website-file" accept=".zip,.html" required></div>
+                <!-- === [DIUBAH] Urutan Form Disesuaikan === -->
+                <div class="form-group">
+                    <label for="subdomain-name">Masukan Nama & Pilih Domain</label>
+                    <div class="subdomain-wrapper">
+                        <input type="text" id="subdomain-name" placeholder="toko-saya" required>
+                        <select id="root-domain-select" required>
+                            <option value="">Memuat...</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="form-group">
+                    <label for="website-file">Upload File Proyek (.zip)</label>
+                    <label for="website-file" id="file-upload-label">
+                        <i class="fas fa-cloud-upload-alt"></i>
+                        <span id="file-name-span">Pilih file...</span>
+                    </label>
+                    <input type="file" id="website-file" accept=".zip,.html" required>
+                </div>
                 <div class="upload-guide-link"><a href="#" id="show-guide-link">Lihat Panduan Upload</a></div>
-                <div class="form-group"><label for="user-api-key">API Key</label><input type="password" id="user-api-key" placeholder="••••••••••••••••" required></div>
-                <button type="submit" id="create-btn" class="button-primary"><span id="btn-text">Buat Website</span></button>
+
+                <div class="form-group">
+                    <label for="user-api-key">Masukan API Key</label>
+                    <input type="password" id="user-api-key" placeholder="••••••••••••••••" required>
+                </div>
+                <!-- === Akhir Perubahan Urutan === -->
+                
+                <button type="submit" id="create-btn" class="button-primary">
+                    <span id="btn-text">Buat Website</span>
+                </button>
             </form>
         </div>
 
