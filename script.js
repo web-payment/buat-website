@@ -29,15 +29,12 @@ document.addEventListener('DOMContentLoaded', () => {
     const normalPriceDisplay = document.getElementById('normal-price-display');
     const finalPriceDisplay = document.getElementById('final-price-display');
     const buyButton = document.getElementById('buy-button');
-
-    // === Elemen Modal Harga (Diperbarui) ===
     const priceModal = document.getElementById('price-modal');
-    const modalNormalPriceContainer = document.getElementById('modal-normal-price-container');
     const modalNormalPrice = document.getElementById('modal-normal-price');
-    const modalFinalPriceLabel = document.getElementById('modal-final-price-label');
     const modalFinalPrice = document.getElementById('modal-final-price');
     const modalBuyBtn = document.getElementById('modal-buy-btn');
     const modalPriceClose = document.getElementById('modal-price-close');
+    const modalDnsInfo = document.getElementById('modal-dns-info');
 
     // === Variabel & State ===
     let toastTimeout;
@@ -50,7 +47,7 @@ document.addEventListener('DOMContentLoaded', () => {
         clearTimeout(toastTimeout);
         const iconMap = { success: 'fa-check-circle', error: 'fa-times-circle', info: 'fa-info-circle' };
         toast.innerHTML = `<i class="fas ${iconMap[type]}"></i> ${message}`;
-        toast.className = 'toast-notification'; // Reset class
+        toast.className = 'toast-notification';
         toast.classList.add(type, 'show');
         toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 4000);
     };
@@ -142,6 +139,13 @@ document.addEventListener('DOMContentLoaded', () => {
         modalCustomUrl.textContent = siteData.customUrl.replace('https://','');
         modalCheckStatusBtn.dataset.project = siteData.projectName;
         modalCheckStatusBtn.dataset.domain = siteData.customUrl.replace('https://','');
+        
+        if (siteData.status === 'pending') {
+            modalDnsInfo.style.display = 'flex';
+        } else {
+            modalDnsInfo.style.display = 'none';
+        }
+
         updateModalStatus(siteData.status);
         detailsModal.classList.add('show');
     };
@@ -206,7 +210,7 @@ document.addEventListener('DOMContentLoaded', () => {
             startCountdown(discountEndDate);
         } else {
             discountBanner.style.display = 'none';
-            normalPriceDisplay.style.display = 'none'; // Sembunyikan harga normal jika tidak diskon
+            normalPriceDisplay.style.display = 'none';
             finalPriceDisplay.textContent = `Rp ${normalPrice.toLocaleString('id-ID')}`;
             if(countdownInterval) clearInterval(countdownInterval);
         }
@@ -250,7 +254,6 @@ document.addEventListener('DOMContentLoaded', () => {
         fileNameSpan.textContent = websiteFileInput.files.length > 0 ? websiteFileInput.files[0].name : 'Pilih file...';
     });
     
-    // === [PERBAIKAN] Tombol lihat harga (buka modal) ===
     buyButton.addEventListener('click', () => {
         const normalPrice = settings.normalPrice || 0;
         const discountPrice = settings.discountPrice || 0;
@@ -258,19 +261,16 @@ document.addEventListener('DOMContentLoaded', () => {
         const isDiscountActive = discountEndDate && new Date(discountEndDate) > new Date();
 
         if (isDiscountActive) {
-            // Tampilkan tampilan diskon
-            modalNormalPriceContainer.style.display = 'flex';
+            modalNormalPrice.parentElement.style.display = 'flex';
             modalNormalPrice.textContent = `Rp ${normalPrice.toLocaleString('id-ID')}`;
             modalNormalPrice.style.textDecoration = 'line-through';
             modalNormalPrice.style.color = 'var(--text-muted)';
             
-            modalFinalPriceLabel.textContent = 'Harga Diskon';
+            modalFinalPrice.previousElementSibling.textContent = 'Harga Diskon';
             modalFinalPrice.textContent = `Rp ${discountPrice.toLocaleString('id-ID')}`;
         } else {
-            // Tampilkan tampilan harga normal
-            modalNormalPriceContainer.style.display = 'none'; // Sembunyikan baris harga normal
-            
-            modalFinalPriceLabel.textContent = 'Harga';
+            modalNormalPrice.parentElement.style.display = 'none';
+            modalFinalPrice.previousElementSibling.textContent = 'Harga';
             modalFinalPrice.textContent = `Rp ${normalPrice.toLocaleString('id-ID')}`;
         }
         
@@ -283,19 +283,17 @@ document.addEventListener('DOMContentLoaded', () => {
         const message = encodeURIComponent('Halo, saya tertarik untuk membeli API Key Permanen.');
         window.open(`https://wa.me/${waNumber}?text=${message}`, '_blank');
     });
+
     modalPriceClose.addEventListener('click', () => priceModal.classList.remove('show'));
-    priceModal.addEventListener('click', (e) => {
-        if(e.target === priceModal) priceModal.classList.remove('show');
-    });
+    priceModal.addEventListener('click', (e) => { if(e.target === priceModal) priceModal.classList.remove('show'); });
 
     showGuideLink.addEventListener('click', (e) => {
         e.preventDefault();
         guideModal.classList.add('show');
     });
+
     guideCloseBtn.addEventListener('click', () => guideModal.classList.remove('show'));
-    guideModal.addEventListener('click', (e) => {
-        if(e.target === guideModal) guideModal.classList.remove('show');
-    });
+    guideModal.addEventListener('click', (e) => { if(e.target === guideModal) guideModal.classList.remove('show'); });
 
     creatorForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -344,9 +342,7 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     modalCloseBtn.addEventListener('click', () => detailsModal.classList.remove('show'));
-    detailsModal.addEventListener('click', (e) => {
-        if(e.target === detailsModal) detailsModal.classList.remove('show');
-    });
+    detailsModal.addEventListener('click', (e) => { if(e.target === detailsModal) detailsModal.classList.remove('show'); });
 
     modalCheckStatusBtn.addEventListener('click', async (e) => {
         const btn = e.currentTarget;
@@ -363,7 +359,9 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!response.ok) throw new Error(result.message);
             if(result.status === 'success') {
                 const updatedSite = updateSiteStatus(project, result.status);
-                if(updatedSite) updateModalStatus(updatedSite.status);
+                if(updatedSite) {
+                    showDetailsModal(updatedSite); // Update modal view
+                }
                 renderSitesList();
             } else {
                  updateModalStatus('pending');

@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Buat Website Otomatis</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
@@ -26,25 +26,15 @@
         }
         .main-container { width: 100%; max-width: 600px; animation: fadeIn 0.5s ease-out; position: relative; margin-top: 50px; }
         
-        /* === [BARU] Foto Profil === */
         .profile-picture-container {
-            position: absolute;
-            top: -50px; /* Setengah dari tinggi gambar */
-            left: 50%;
-            transform: translateX(-50%);
-            z-index: 10;
+            position: absolute; top: -50px; left: 50%;
+            transform: translateX(-50%); z-index: 10;
         }
         .profile-picture {
-            width: 100px;
-            height: 100px;
-            background-color: var(--card-bg);
-            border: 5px solid var(--bg-color);
-            border-radius: 50%;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            font-size: 3em;
-            color: var(--primary-color);
+            width: 100px; height: 100px; background-color: var(--card-bg);
+            border: 5px solid var(--bg-color); border-radius: 50%;
+            display: flex; justify-content: center; align-items: center;
+            font-size: 3em; color: var(--primary-color);
             box-shadow: 0 4px 12px rgba(0,0,0,0.1);
         }
         
@@ -95,7 +85,21 @@
         .modal-body-item strong { display: block; color: var(--text-muted); font-size: 0.9em; margin-bottom: 5px;}
         .modal-body-item a { color: var(--primary-color); text-decoration: none; word-break: break-all; }
 
-        /* === [DIPERBARUI] Notifikasi ala iPhone === */
+        /* === [BARU] Kotak Info di dalam Modal === */
+        .modal-info-box {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            background-color: var(--bg-color);
+            padding: 12px;
+            border-radius: 10px;
+            font-size: 0.85em;
+            color: var(--text-muted);
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+        }
+        .modal-info-box i { color: var(--primary-color); }
+
         #toast-notification {
             position: fixed; top: 20px; left: 50%; transform: translate(-50%, -150%);
             z-index: 9999; padding: 12px 20px; border-radius: 25px;
@@ -118,7 +122,7 @@
         
         .upload-guide-link { text-align: center; margin-top: -15px; margin-bottom: 25px; }
         .upload-guide-link a { color: var(--primary-color); text-decoration: none; font-size: 0.9em; }
-        .pricing-section .creator-card, #created-sites-container { padding-top: 30px; } /* Reset padding-top untuk kartu lain */
+        .pricing-section .creator-card, #created-sites-container { padding-top: 30px; }
         .discount-banner { background-color: var(--error-color); color: white; padding: 15px; border-radius: 12px; text-align: center; margin-bottom: 25px; }
         #countdown-timer { font-size: 1.2em; font-weight: 600; letter-spacing: 2px; }
         .price-card { background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: 15px; padding: 25px; text-align: center; }
@@ -129,7 +133,6 @@
         .guide-content li { display: flex; align-items: flex-start; gap: 15px; margin-bottom: 15px; text-align: left;}
         .guide-content i { color: var(--primary-color); font-size: 1.2em; margin-top: 4px; }
         
-        /* === [DIPERBARUI] Modal Konfirmasi === */
         #confirmation-modal .modal-content { max-width: 350px; padding: 0; text-align: center; overflow: hidden; }
         #confirmation-modal-title { font-weight: 600; padding: 25px 20px 5px; font-size: 1.1em; }
         #confirmation-modal-message { font-size: 0.9em; padding: 0 20px 25px; color: var(--text-muted); }
@@ -200,9 +203,57 @@
         <a href="admin.html" class="admin-link">Masuk Panel Admin</a>
     </div>
     
-    <div id="guide-modal" class="modal-overlay"><div class="modal-content"><div class="modal-header"><i class="fas fa-info-circle" style="color: var(--primary-color);"></i><h2>Panduan Upload</h2></div><div class="guide-content" style="padding: 0 15px;"><ul><li><i class="fas fa-file-archive"></i><div><strong>Batas Ukuran File: 4.5 MB</strong><p>Pastikan file .zip Anda tidak lebih dari 4.5 MB.</p></div></li><li><i class="fas fa-user-secret"></i><div><strong>Data Sensitif Dilarang</strong><p>Jangan menaruh API Key atau password di dalam file.</p></div></li><li><i class="fas fa-gavel"></i><div><strong>Konten Ilegal Dilarang</strong><p>Dilarang keras mengunggah konten yang melanggar hukum.</p></div></li></ul></div><button id="guide-close-btn" class="button-primary" style="margin-top: 15px;">Saya Mengerti</button></div></div>
-    <div id="details-modal" class="modal-overlay"><div class="modal-content"><div class="modal-header"><i class="fas fa-link" style="color: var(--primary-color);"></i><h2>Detail Website</h2></div><div class="modal-body-item"><strong>URL Kustom Anda:</strong><a href="#" target="_blank" id="modal-custom-url"></a></div><div class="modal-body-item"><strong>URL Vercel:</strong><a href="#" target="_blank" id="modal-vercel-url"></a></div><button id="modal-check-status-btn" class="button-primary status pending">Cek Status</button><button id="modal-close-btn" class="button-primary" style="margin-top: 10px; background-color: var(--text-muted);">Tutup</button></div></div>
-    <div id="price-modal" class="modal-overlay"><div class="modal-content"><div class="modal-header"><i class="fas fa-tag" style="color: var(--primary-color);"></i><h2>Harga API Key</h2></div><div style="padding: 5px 0 15px;"><div class="modal-body-item" id="modal-normal-price-container" style="display: flex; justify-content: space-between; align-items: baseline;"><strong>Harga Normal</strong><span id="modal-normal-price" style="font-size: 1.1em;"></span></div><div class="modal-body-item" style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0;"><strong id="modal-final-price-label">Harga Final</strong><span id="modal-final-price" style="font-size: 1.7em; font-weight: 600; color: var(--primary-color);"></span></div></div><button class="button-primary" id="modal-buy-btn"><i class="fab fa-whatsapp"></i> Beli via WhatsApp</button><button class="button-primary" id="modal-price-close" style="margin-top: 10px; background-color: var(--text-muted);">Tutup</button></div></div>
+    <div id="guide-modal" class="modal-overlay">
+        <div class="modal-content"><div class="modal-header"><i class="fas fa-info-circle" style="color: var(--primary-color);"></i><h2>Panduan Upload</h2></div><div class="guide-content" style="padding: 0 15px;"><ul><li><i class="fas fa-file-archive"></i><div><strong>Batas Ukuran File: 4.5 MB</strong><p>Pastikan file .zip Anda tidak lebih dari 4.5 MB.</p></div></li><li><i class="fas fa-user-secret"></i><div><strong>Data Sensitif Dilarang</strong><p>Jangan menaruh API Key atau password di dalam file.</p></div></li><li><i class="fas fa-gavel"></i><div><strong>Konten Ilegal Dilarang</strong><p>Dilarang keras mengunggah konten yang melanggar hukum.</p></div></li></ul></div><button id="guide-close-btn" class="button-primary" style="margin-top: 15px;">Saya Mengerti</button></div>
+    </div>
+    
+    <div id="details-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <i class="fas fa-link" style="color: var(--primary-color);"></i>
+                <h2>Detail Website</h2>
+            </div>
+            <div class="modal-body-item">
+                <strong>URL Kustom Anda:</strong>
+                <a href="#" target="_blank" id="modal-custom-url"></a>
+            </div>
+            <div class="modal-body-item">
+                <strong>URL Vercel:</strong>
+                <a href="#" target="_blank" id="modal-vercel-url"></a>
+            </div>
+            
+            <div class="modal-info-box" id="modal-dns-info">
+                <i class="fas fa-info-circle"></i>
+                <span>Estimasi aktivasi domain kustom sekitar 5-15 menit. Silakan cek status secara berkala.</span>
+            </div>
+
+            <button id="modal-check-status-btn" class="button-primary status pending">Cek Status</button>
+            <button id="modal-close-btn" class="button-primary" style="margin-top: 10px; background-color: var(--text-muted);">Tutup</button>
+        </div>
+    </div>
+
+    <div id="price-modal" class="modal-overlay">
+        <div class="modal-content">
+            <div class="modal-header">
+                <i class="fas fa-tag" style="color: var(--primary-color);"></i>
+                <h2>Harga API Key</h2>
+            </div>
+            <div style="padding: 5px 0 15px;">
+                <div class="modal-body-item" id="modal-normal-price-container" style="display: flex; justify-content: space-between; align-items: baseline;">
+                    <strong>Harga Normal</strong>
+                    <span id="modal-normal-price" style="font-size: 1.1em;"></span>
+                </div>
+                <div class="modal-body-item" style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0;">
+                    <strong id="modal-final-price-label">Harga Final</strong>
+                    <span id="modal-final-price" style="font-size: 1.7em; font-weight: 600; color: var(--primary-color);"></span>
+                </div>
+            </div>
+            <button class="button-primary" id="modal-buy-btn">
+                <i class="fab fa-whatsapp"></i> Beli via WhatsApp
+            </button>
+            <button class="button-primary" id="modal-price-close" style="margin-top: 10px; background-color: var(--text-muted);">Tutup</button>
+        </div>
+    </div>
     
     <div id="confirmation-modal" class="modal-overlay">
         <div class="modal-content">
