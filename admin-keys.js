@@ -54,7 +54,7 @@ document.addEventListener('DOMContentLoaded', () => {
         notificationContainer.appendChild(notif);
         notificationTimeout = setTimeout(() => {
             notif.style.opacity = '0';
-            setTimeout(() => notif.remove(), 300);
+            setTimeout(() => notif.remove(), 400);
         }, 4000);
     };
 
@@ -178,8 +178,10 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     };
+    
+    // === [DIPERBARUI] Menampilkan jumlah domain ===
     const renderCloudflareZones = (zones) => {
-        cloudflareModalTitle.textContent = 'Manajemen Zona Cloudflare';
+        cloudflareModalTitle.innerHTML = `Manajemen Zona Cloudflare <span class="item-count">${zones.length}</span>`;
         let listHtml = zones.map(zone => `
             <li class="list-item" data-search-term="${zone.name.toLowerCase()}">
                 <input type="checkbox" class="item-checkbox" value="${zone.id}" data-name="${zone.name}">
@@ -206,7 +208,7 @@ document.addEventListener('DOMContentLoaded', () => {
         setupBulkDeleteControls(cloudflareModalBody, 'zones');
     };
     const renderDnsRecords = (records, zoneId, zoneName) => {
-        cloudflareModalTitle.textContent = `Record DNS untuk ${zoneName}`;
+        cloudflareModalTitle.innerHTML = `Record DNS: ${zoneName} <span class="item-count">${records.length}</span>`;
         let listHtml = records.map(rec => {
             const searchTerm = `${rec.name} ${rec.type} ${rec.content}`.toLowerCase();
             return `<li class="list-item" data-search-term="${searchTerm}">
@@ -240,7 +242,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
     
-    // --- FUNGSI BARU UNTUK PENGATURAN ---
     const loadSettings = async () => {
         try {
             const res = await callApi('getSettings');
@@ -257,12 +258,34 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
     
-    // === Fungsi Utama & Event Listener ===
+    // === [BARU] Fungsi Navigasi Halaman Admin ===
+    const setupNavigation = () => {
+        const navButtons = document.querySelectorAll('.admin-nav .nav-btn');
+        const pages = document.querySelectorAll('.admin-card .admin-page');
+
+        navButtons.forEach(button => {
+            button.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetPageId = button.dataset.page;
+
+                // Sembunyikan semua halaman
+                pages.forEach(page => page.style.display = 'none');
+                
+                // Hapus kelas aktif dari semua tombol
+                navButtons.forEach(btn => btn.classList.remove('active'));
+
+                // Tampilkan halaman target dan aktifkan tombol
+                document.getElementById(targetPageId).style.display = 'block';
+                button.classList.add('active');
+            });
+        });
+    };
+    
     const showAdminPanel = (keys) => {
         loginScreen.style.display = 'none';
         adminPanel.style.display = 'block';
         renderApiKeys(keys);
-        loadSettings(); // Memuat pengaturan setelah login berhasil
+        loadSettings(); 
     };
 
     loginBtn.addEventListener('click', async () => {
@@ -327,6 +350,7 @@ document.addEventListener('DOMContentLoaded', () => {
         }, 1500);
     });
 
+    // ... sisa event listener lainnya tidak perlu diubah ...
     document.getElementById('create-key-form').addEventListener('submit', async (e) => {
         e.preventDefault();
         const createBtn = e.target.querySelector('button[type="submit"]');
@@ -519,6 +543,7 @@ document.addEventListener('DOMContentLoaded', () => {
             if (newTheme === 'dark') { body.classList.add('dark-mode'); themeToggle.innerHTML = '<i class="fas fa-sun"></i>'; }
             else { body.classList.remove('dark-mode'); themeToggle.innerHTML = '<i class="fas fa-moon"></i>'; }
         });
+        setupNavigation(); // [BARU] Menjalankan fungsi navigasi
         setTimeout(tryAutoLogin, 700);
     };
     
