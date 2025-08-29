@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Buat Website Otomatis</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="preconnect" href="https://fonts.gstatic" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
@@ -21,13 +21,37 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: 'Poppins', sans-serif; background-color: var(--bg-color); color: var(--text-color);
-            display: flex; justify-content: center; align-items: flex-start; min-height: 100vh;
+            display: flex; justify-content: center; align-items: center; min-height: 100vh;
             padding: 20px; transition: background-color 0.3s, color 0.3s;
         }
-        .main-container { width: 100%; max-width: 600px; animation: fadeIn 0.5s ease-out; }
+        .main-container { width: 100%; max-width: 600px; animation: fadeIn 0.5s ease-out; position: relative; margin-top: 50px; }
+        
+        /* === [BARU] Foto Profil === */
+        .profile-picture-container {
+            position: absolute;
+            top: -50px; /* Setengah dari tinggi gambar */
+            left: 50%;
+            transform: translateX(-50%);
+            z-index: 10;
+        }
+        .profile-picture {
+            width: 100px;
+            height: 100px;
+            background-color: var(--card-bg);
+            border: 5px solid var(--bg-color);
+            border-radius: 50%;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 3em;
+            color: var(--primary-color);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+        
         .creator-card {
             background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 20px;
             padding: 30px 35px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1); margin-bottom: 30px;
+            padding-top: 70px; /* Beri ruang untuk profil picture */
         }
         h1 { font-size: 2em; font-weight: 700; text-align: center; }
         h2 { text-align: center; font-weight: 600; margin-bottom: 20px; }
@@ -71,10 +95,21 @@
         .modal-body-item strong { display: block; color: var(--text-muted); font-size: 0.9em; margin-bottom: 5px;}
         .modal-body-item a { color: var(--primary-color); text-decoration: none; word-break: break-all; }
 
-        #toast-notification { position: fixed; top: 20px; left: 50%; transform: translate(-50%, -150%); z-index: 9999; background-color: rgba(44, 44, 46, 0.85); color: #fff; padding: 12px 20px; border-radius: 25px; font-size: 0.9em; font-weight: 500; box-shadow: 0 4px 15px rgba(0,0,0,0.2); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); opacity: 0; transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.5s ease; display: flex; align-items: center; gap: 10px; pointer-events: none; }
+        /* === [DIPERBARUI] Notifikasi ala iPhone === */
+        #toast-notification {
+            position: fixed; top: 20px; left: 50%; transform: translate(-50%, -150%);
+            z-index: 9999; padding: 12px 20px; border-radius: 25px;
+            font-size: 0.9em; font-weight: 500;
+            box-shadow: 0 4px 15px rgba(0,0,0,0.2);
+            opacity: 0; transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.5s ease;
+            display: flex; align-items: center; gap: 10px; pointer-events: none;
+            background-color: rgba(40, 40, 40, 0.7);
+            backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); color: #fff;
+        }
         #toast-notification.show { opacity: 1; transform: translate(-50%, 0); }
         #toast-notification.success { background-color: rgba(50, 215, 75, 0.85); }
         #toast-notification.error { background-color: rgba(255, 69, 58, 0.85); }
+
         .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--bg-color); z-index: 10000; display: flex; justify-content: center; align-items: center; opacity: 1; transition: opacity 0.5s ease; }
         .loading-overlay.hidden { opacity: 0; pointer-events: none; }
         .loading-logo { font-size: 2.5em; color: var(--primary-color); animation: pulse 1.5s infinite; }
@@ -83,7 +118,7 @@
         
         .upload-guide-link { text-align: center; margin-top: -15px; margin-bottom: 25px; }
         .upload-guide-link a { color: var(--primary-color); text-decoration: none; font-size: 0.9em; }
-        .pricing-section .creator-card { padding-top: 40px; }
+        .pricing-section .creator-card, #created-sites-container { padding-top: 30px; } /* Reset padding-top untuk kartu lain */
         .discount-banner { background-color: var(--error-color); color: white; padding: 15px; border-radius: 12px; text-align: center; margin-bottom: 25px; }
         #countdown-timer { font-size: 1.2em; font-weight: 600; letter-spacing: 2px; }
         .price-card { background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: 15px; padding: 25px; text-align: center; }
@@ -93,7 +128,12 @@
         .guide-content ul { list-style: none; padding-left: 0; }
         .guide-content li { display: flex; align-items: flex-start; gap: 15px; margin-bottom: 15px; text-align: left;}
         .guide-content i { color: var(--primary-color); font-size: 1.2em; margin-top: 4px; }
-        .confirmation-buttons { display: flex; border-top: 1px solid var(--border-color); margin: 20px -25px -25px; }
+        
+        /* === [DIPERBARUI] Modal Konfirmasi === */
+        #confirmation-modal .modal-content { max-width: 350px; padding: 0; text-align: center; overflow: hidden; }
+        #confirmation-modal-title { font-weight: 600; padding: 25px 20px 5px; font-size: 1.1em; }
+        #confirmation-modal-message { font-size: 0.9em; padding: 0 20px 25px; color: var(--text-muted); }
+        .confirmation-buttons { display: flex; border-top: 1px solid var(--border-color); margin: 0; }
         .confirmation-buttons button { flex: 1; padding: 14px; border-radius: 0; background: none; font-size: 1.05em; font-weight: 500; }
         #confirm-btn-no { color: var(--primary-color); border-right: 1px solid var(--border-color); border-bottom-left-radius: 20px; }
         #confirm-btn-yes { color: var(--error-color); font-weight: 600; border-bottom-right-radius: 20px;}
@@ -114,6 +154,12 @@
     <div id="toast-notification"></div>
 
     <div class="main-container">
+        <div class="profile-picture-container">
+            <div class="profile-picture">
+                <i class="fas fa-bolt"></i>
+            </div>
+        </div>
+
         <div class="creator-card">
             <div style="text-align: center; margin-bottom: 30px;">
                 <h1>Buat Website Baru</h1>
@@ -128,23 +174,21 @@
             </form>
         </div>
 
-        <div class="pricing-section">
-            <div class="creator-card">
-                <h2>Belum Punya API Key?</h2>
-                <div id="discount-banner" class="discount-banner" style="display: none;">
-                    <h3>🔥 PROMO TERBATAS! 🔥</h3>
-                    <p>Diskon akan berakhir dalam:</p>
-                    <div id="countdown-timer">00:00:00:00</div>
-                </div>
-                <div class="pricing-grid">
-                    <div class="price-card">
-                        <h3>API Key Permanen</h3>
-                        <div class="price-tag">
-                            <div class="normal-price" id="normal-price-display"></div>
-                            <div class="final-price" id="final-price-display">Rp 0</div>
-                        </div>
-                        <button class="button-primary" id="buy-button"><i class="fas fa-tags"></i> Lihat Harga</button>
+        <div class="pricing-section creator-card">
+            <h2>Belum Punya API Key?</h2>
+            <div id="discount-banner" class="discount-banner" style="display: none;">
+                <h3>🔥 PROMO TERBATAS! 🔥</h3>
+                <p>Diskon akan berakhir dalam:</p>
+                <div id="countdown-timer">00:00:00:00</div>
+            </div>
+            <div class="pricing-grid">
+                <div class="price-card">
+                    <h3>API Key Permanen</h3>
+                    <div class="price-tag">
+                        <div class="normal-price" id="normal-price-display"></div>
+                        <div class="final-price" id="final-price-display">Rp 0</div>
                     </div>
+                    <button class="button-primary" id="buy-button"><i class="fas fa-tags"></i> Lihat Harga</button>
                 </div>
             </div>
         </div>
@@ -156,55 +200,14 @@
         <a href="admin.html" class="admin-link">Masuk Panel Admin</a>
     </div>
     
-    <div id="guide-modal" class="modal-overlay">
-        <div class="modal-content"><div class="modal-header"><i class="fas fa-info-circle" style="color: var(--primary-color);"></i><h2>Panduan Upload</h2></div><div class="guide-content" style="padding: 0 15px;"><ul><li><i class="fas fa-file-archive"></i><div><strong>Batas Ukuran File: 4.5 MB</strong><p>Pastikan file .zip Anda tidak lebih dari 4.5 MB.</p></div></li><li><i class="fas fa-user-secret"></i><div><strong>Data Sensitif Dilarang</strong><p>Jangan menaruh API Key atau password di dalam file.</p></div></li><li><i class="fas fa-gavel"></i><div><strong>Konten Ilegal Dilarang</strong><p>Dilarang keras mengunggah konten yang melanggar hukum.</p></div></li></ul></div><button id="guide-close-btn" class="button-primary" style="margin-top: 15px;">Saya Mengerti</button></div>
-    </div>
+    <div id="guide-modal" class="modal-overlay"><div class="modal-content"><div class="modal-header"><i class="fas fa-info-circle" style="color: var(--primary-color);"></i><h2>Panduan Upload</h2></div><div class="guide-content" style="padding: 0 15px;"><ul><li><i class="fas fa-file-archive"></i><div><strong>Batas Ukuran File: 4.5 MB</strong><p>Pastikan file .zip Anda tidak lebih dari 4.5 MB.</p></div></li><li><i class="fas fa-user-secret"></i><div><strong>Data Sensitif Dilarang</strong><p>Jangan menaruh API Key atau password di dalam file.</p></div></li><li><i class="fas fa-gavel"></i><div><strong>Konten Ilegal Dilarang</strong><p>Dilarang keras mengunggah konten yang melanggar hukum.</p></div></li></ul></div><button id="guide-close-btn" class="button-primary" style="margin-top: 15px;">Saya Mengerti</button></div></div>
+    <div id="details-modal" class="modal-overlay"><div class="modal-content"><div class="modal-header"><i class="fas fa-link" style="color: var(--primary-color);"></i><h2>Detail Website</h2></div><div class="modal-body-item"><strong>URL Kustom Anda:</strong><a href="#" target="_blank" id="modal-custom-url"></a></div><div class="modal-body-item"><strong>URL Vercel:</strong><a href="#" target="_blank" id="modal-vercel-url"></a></div><button id="modal-check-status-btn" class="button-primary status pending">Cek Status</button><button id="modal-close-btn" class="button-primary" style="margin-top: 10px; background-color: var(--text-muted);">Tutup</button></div></div>
+    <div id="price-modal" class="modal-overlay"><div class="modal-content"><div class="modal-header"><i class="fas fa-tag" style="color: var(--primary-color);"></i><h2>Harga API Key</h2></div><div style="padding: 5px 0 15px;"><div class="modal-body-item" id="modal-normal-price-container" style="display: flex; justify-content: space-between; align-items: baseline;"><strong>Harga Normal</strong><span id="modal-normal-price" style="font-size: 1.1em;"></span></div><div class="modal-body-item" style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0;"><strong id="modal-final-price-label">Harga Final</strong><span id="modal-final-price" style="font-size: 1.7em; font-weight: 600; color: var(--primary-color);"></span></div></div><button class="button-primary" id="modal-buy-btn"><i class="fab fa-whatsapp"></i> Beli via WhatsApp</button><button class="button-primary" id="modal-price-close" style="margin-top: 10px; background-color: var(--text-muted);">Tutup</button></div></div>
     
-    <div id="details-modal" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-header">
-                <i class="fas fa-link" style="color: var(--primary-color);"></i>
-                <h2>Detail Website</h2>
-            </div>
-            <div class="modal-body-item">
-                <strong>URL Kustom Anda:</strong>
-                <a href="#" target="_blank" id="modal-custom-url"></a>
-            </div>
-            <div class="modal-body-item">
-                <strong>URL Vercel:</strong>
-                <a href="#" target="_blank" id="modal-vercel-url"></a>
-            </div>
-            <button id="modal-check-status-btn" class="button-primary status pending">Cek Status</button>
-            <button id="modal-close-btn" class="button-primary" style="margin-top: 10px; background-color: var(--text-muted);">Tutup</button>
-        </div>
-    </div>
-
-    <div id="price-modal" class="modal-overlay">
-        <div class="modal-content">
-            <div class="modal-header">
-                <i class="fas fa-tag" style="color: var(--primary-color);"></i>
-                <h2>Harga API Key</h2>
-            </div>
-            <div style="padding: 5px 0 15px;">
-                <div class="modal-body-item" id="modal-normal-price-container" style="display: flex; justify-content: space-between; align-items: baseline;">
-                    <strong>Harga Normal</strong>
-                    <span id="modal-normal-price" style="font-size: 1.1em;"></span>
-                </div>
-                <div class="modal-body-item" style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0;">
-                    <strong id="modal-final-price-label">Harga Final</strong>
-                    <span id="modal-final-price" style="font-size: 1.7em; font-weight: 600; color: var(--primary-color);"></span>
-                </div>
-            </div>
-            <button class="button-primary" id="modal-buy-btn">
-                <i class="fab fa-whatsapp"></i> Beli via WhatsApp
-            </button>
-            <button class="button-primary" id="modal-price-close" style="margin-top: 10px; background-color: var(--text-muted);">Tutup</button>
-        </div>
-    </div>
     <div id="confirmation-modal" class="modal-overlay">
-        <div class="modal-content" style="max-width: 350px;">
-             <h3 id="confirmation-modal-title" style="text-align: center; font-weight: 600; padding: 20px 20px 5px;"></h3>
-             <p id="confirmation-modal-message" style="font-size: 0.9em; padding: 0 20px 20px; color: var(--text-muted); text-align: center;"></p>
+        <div class="modal-content">
+             <h3 id="confirmation-modal-title"></h3>
+             <p id="confirmation-modal-message"></p>
              <div class="confirmation-buttons">
                 <button id="confirm-btn-no">Batal</button>
                 <button id="confirm-btn-yes">Hapus</button>
