@@ -21,16 +21,16 @@
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: 'Poppins', sans-serif; background-color: var(--bg-color); color: var(--text-color);
-            display: flex; justify-content: center; align-items: flex-start; /* Ubah ke flex-start */
+            display: flex; justify-content: center; align-items: flex-start;
             min-height: 100vh;
             padding: 20px; transition: background-color 0.3s, color 0.3s;
         }
         .main-container { 
             width: 100%; 
-            max-width: 500px; /* Sedikit lebih ramping */
+            max-width: 500px;
             animation: fadeIn 0.5s ease-out; 
             position: relative; 
-            margin-top: 60px; /* Beri ruang lebih di atas */
+            margin-top: 60px;
             padding-bottom: 20px;
         }
         
@@ -49,8 +49,8 @@
         .creator-card {
             background: var(--card-bg); 
             border: 1px solid var(--border-color); 
-            border-radius: 24px; /* Lebih rounded */
-            padding: 25px; /* Padding konsisten */
+            border-radius: 24px;
+            padding: 25px;
             box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1); 
             margin-bottom: 30px;
             padding-top: 70px;
@@ -66,43 +66,6 @@
         }
         input:focus, select:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2); }
         
-        /* === [DIUBAH] Pemisahan Input Domain === */
-        .subdomain-wrapper { 
-            display: flex; 
-            align-items: center; 
-            background-color: var(--bg-color);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            overflow: hidden; /* Penting untuk radius */
-        }
-        .subdomain-wrapper:focus-within {
-             border-color: var(--primary-color);
-             box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2);
-        }
-        #subdomain-name { 
-            border: none;
-            border-radius: 0;
-            flex-grow: 1; /* Biarkan input nama memanjang */
-        }
-        #subdomain-name:focus {
-            box-shadow: none; /* Hapus shadow duplikat */
-        }
-        .subdomain-separator {
-            padding: 0 5px;
-            font-weight: 500;
-            color: var(--text-muted);
-        }
-        #root-domain-select {
-            border: none;
-            border-radius: 0;
-            width: auto; /* Lebar sesuai konten */
-            padding-right: 30px; /* Ruang untuk panah dropdown */
-        }
-        #root-domain-select:focus {
-            box-shadow: none; /* Hapus shadow duplikat */
-        }
-        /* === Akhir Perubahan === */
-
         #file-upload-label { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 14px; text-align: center; cursor: pointer; border: 2px dashed var(--border-color); border-radius: 12px; }
         #website-file { display: none; }
         button { cursor: pointer; font-family: inherit; }
@@ -207,16 +170,17 @@
                 <p>Unggah proyek Anda dan langsung publikasikan.</p>
             </div>
             <form id="creator-form">
+                <!-- === [DIUBAH] Struktur Form Terpisah === -->
                 <div class="form-group">
-                    <label for="subdomain-name">Masukan Nama & Pilih Domain</label>
-                    <!-- === [DIUBAH] Wrapper Baru untuk Input Domain === -->
-                    <div class="subdomain-wrapper">
-                        <input type="text" id="subdomain-name" placeholder="toko-saya" required>
-                        <span class="subdomain-separator">.</span>
-                        <select id="root-domain-select" required>
-                            <option value="">Memuat...</option>
-                        </select>
-                    </div>
+                    <label for="subdomain-name">Nama</label>
+                    <input type="text" id="subdomain-name" placeholder="toko-saya" required>
+                </div>
+
+                <div class="form-group">
+                    <label for="root-domain-select">Pilihan Domain</label>
+                    <select id="root-domain-select" required>
+                        <option value="">Memuat...</option>
+                    </select>
                 </div>
                 
                 <div class="form-group">
@@ -233,6 +197,7 @@
                     <label for="user-api-key">Masukan API Key</label>
                     <input type="password" id="user-api-key" placeholder="••••••••••••••••" required>
                 </div>
+                <!-- === Akhir Perubahan === -->
                 
                 <button type="submit" id="create-btn" class="button-primary">
                     <span id="btn-text">Buat Website</span>
