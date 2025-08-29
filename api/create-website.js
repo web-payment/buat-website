@@ -4,7 +4,7 @@ import formidable from "formidable";
 import AdmZip from "adm-zip";
 import fs from "fs";
 import path from "path";
-import { promises as fsPromises } from 'fs'; // Menggunakan fs promises untuk operasi file modern
+import { promises as fsPromises } from 'fs';
 import { promises as dns } from 'dns';
 
 // --- Konfigurasi ---
@@ -16,7 +16,7 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const REPO_NAME_FOR_JSON = process.env.REPO_NAME_FOR_JSON;
 const VERCEL_A_RECORD = '76.76.21.21';
 const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
-const CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID; // Opsional
+const CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
 
 const octokit = new Octokit({ auth: GITHUB_TOKEN });
 const VERCEL_API_BASE = `https://api.vercel.com`;
@@ -93,16 +93,11 @@ async function handleJsonActions(req, res) {
         const SETTINGS_PATH = "data/settings.json";
         const APIKEYS_PATH = "data/apikeys.json";
 
-        // Aksi publik (tidak perlu password)
+        // Aksi publik
         switch(action) {
             case 'getSettings': {
                 const settings = await readJsonFromGithub(SETTINGS_PATH);
-                const defaultSettings = {
-                    whatsappNumber: "",
-                    normalPrice: 50000,
-                    discountPrice: 25000,
-                    discountEndDate: new Date().toISOString()
-                };
+                const defaultSettings = { whatsappNumber: "", normalPrice: 50000, discountPrice: 25000, discountEndDate: new Date().toISOString() };
                 return res.status(200).json({ ...defaultSettings, ...settings });
             }
             case 'checkDomainStatus': {
@@ -116,17 +111,9 @@ async function handleJsonActions(req, res) {
                 } catch (err) {}
                 return res.status(200).json({ status: 'pending', message: 'Domain belum terhubung.' });
             }
-            case 'checkSubdomain': {
-                const { subdomain, rootDomain } = data;
-                if (!subdomain || !rootDomain) return res.status(400).json({ message: "Subdomain dan domain utama diperlukan." });
-                const finalDomain = `${subdomain}.${rootDomain}`;
-                const checkRes = await fetch(`${VERCEL_API_BASE}/v9/projects/${finalDomain}${TEAM_QUERY}`, { headers: VERCEL_HEADERS });
-                const result = await checkRes.json();
-                return res.status(200).json({ available: !result.available });
-            }
         }
         
-        // Aksi admin (perlu password)
+        // Aksi admin
         if (adminPassword !== ADMIN_PASSWORD) return res.status(403).json({ message: "Password admin salah."});
 
         switch (action) {
@@ -137,18 +124,13 @@ async function handleJsonActions(req, res) {
                 await writeJsonToGithub(SETTINGS_PATH, newSettings, "Update app settings");
                 return res.status(200).json({ message: "Pengaturan berhasil disimpan.", settings: newSettings });
             }
-            case "getApiKeys": {
-                const apiKeys = await readJsonFromGithub(APIKEYS_PATH);
-                return res.status(200).json(apiKeys);
-            }
+            case "getApiKeys": { const apiKeys = await readJsonFromGithub(APIKEYS_PATH); return res.status(200).json(apiKeys); }
             case "createApiKey": {
                 let apiKeys = await readJsonFromGithub(APIKEYS_PATH);
                 const { key, duration, unit, isPermanent } = data;
                 if (!key || apiKeys[key]) return res.status(400).json({ message: "Nama API Key tidak boleh kosong atau sudah ada."});
-                
                 const now = new Date();
                 let expires_at = "permanent";
-                
                 if (!isPermanent) {
                     const d = parseInt(duration, 10);
                     const expiryDate = new Date(now);
@@ -157,127 +139,20 @@ async function handleJsonActions(req, res) {
                     else if (unit === "months") expiryDate.setMonth(expiryDate.getMonth() + d);
                     expires_at = expiryDate.toISOString();
                 }
-
-                const newKeyData = { 
-                    created_at: now.toISOString(), 
-                    expires_at 
-                };
+                const newKeyData = { created_at: now.toISOString(), expires_at };
                 apiKeys[key] = newKeyData;
-                
                 await writeJsonToGithub(APIKEYS_PATH, apiKeys, `Create API Key: ${key}`);
-                
-                return res.status(200).json({ 
-                    message: `Kunci '${key}' berhasil dibuat.`, 
-                    newKey: { 
-                        name: key, 
-                        ...newKeyData 
-                    } 
-                });
+                return res.status(200).json({ message: `Kunci '${key}' berhasil dibuat.`, newKey: { name: key, ...newKeyData } });
             }
-            case "deleteApiKey": {
-                let apiKeys = await readJsonFromGithub(APIKEYS_PATH);
-                const { key } = data;
-                if (!apiKeys[key]) return res.status(404).json({ message: "API Key tidak ditemukan."});
-                delete apiKeys[key];
-                await writeJsonToGithub(APIKEYS_PATH, apiKeys, `Delete API Key: ${key}`);
-                return res.status(200).json({ message: `Kunci '${key}' berhasil dihapus.` });
-            }
-            case "listProjects": {
-                const { data: githubRepos } = await octokit.repos.listForAuthenticatedUser({ sort: 'created', direction: 'desc' });
-                const vercelRes = await fetch(`${VERCEL_API_BASE}/v9/projects${TEAM_QUERY}`, { headers: VERCEL_HEADERS });
-                if (!vercelRes.ok) throw new Error("Gagal mengambil data dari Vercel.");
-                const { projects: vercelProjects = [] } = await vercelRes.json();
-
-                const allProjects = {};
-                githubRepos.forEach(repo => {
-                    allProjects[repo.name] = { name: repo.name, githubUrl: repo.html_url, isPrivate: repo.private, hasGithub: true, hasVercel: false };
-                });
-                vercelProjects.forEach(proj => {
-                    if (allProjects[proj.name]) {
-                        allProjects[proj.name].hasVercel = true;
-                    } else {
-                        allProjects[proj.name] = { name: proj.name, githubUrl: null, isPrivate: null, hasGithub: false, hasVercel: true };
-                    }
-                });
-                return res.status(200).json(Object.values(allProjects));
-            }
-            case "deleteRepo": {
-                const { repoName } = data;
-                if (!repoName) return res.status(400).json({ message: "Nama repo diperlukan." });
-                await octokit.repos.delete({ owner: REPO_OWNER, repo: repoName });
-                return res.status(200).json({ message: `Repositori '${repoName}' berhasil dihapus.` });
-            }
-            case "deleteVercelProject": {
-                const { projectName } = data;
-                if (!projectName) return res.status(400).json({ message: "Nama proyek diperlukan." });
-                const deleteRes = await fetch(`${VERCEL_API_BASE}/v9/projects/${projectName}${TEAM_QUERY}`, { method: 'DELETE', headers: VERCEL_HEADERS });
-                if (!deleteRes.ok) {
-                    const error = await deleteRes.json();
-                    throw new Error(`Gagal menghapus proyek Vercel: ${error.error.message}`);
-                }
-                return res.status(200).json({ message: `Proyek Vercel '${projectName}' berhasil dihapus.` });
-            }
-            case "listAllCloudflareZones": {
-                let allZones = []; let page = 1; let totalPages;
-                do {
-                    const response = await fetch(`https://api.cloudflare.com/client/v4/zones?page=${page}&per_page=50`, { headers: CF_HEADERS });
-                    const result = await response.json();
-                    if (!result.success) throw new Error("Gagal mengambil daftar zona dari Cloudflare.");
-                    allZones = allZones.concat(result.result);
-                    totalPages = result.result_info.total_pages;
-                    page++;
-                } while (page <= totalPages);
-                return res.status(200).json(allZones);
-            }
-            case "addCloudflareZone": {
-                const { domainName } = data;
-                if (!domainName) throw new Error("Nama domain diperlukan.");
-                const zonesResponse = await fetch(`https://api.cloudflare.com/client/v4/zones?per_page=1`, { headers: CF_HEADERS });
-                const zonesResult = await zonesResponse.json();
-                if (!zonesResult.success) throw new Error(zonesResult.errors[0]?.message || "Gagal memverifikasi akun Cloudflare.");
-                if (zonesResult.result.length === 0 && !process.env.CLOUDFLARE_ACCOUNT_ID) {
-                     throw new Error("Tidak dapat menemukan Account ID Cloudflare. Harap tambahkan di .env atau pastikan ada minimal 1 domain di akun Anda.");
-                }
-                const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || zonesResult.result[0].account.id;
-                const createResponse = await fetch(`https://api.cloudflare.com/client/v4/zones`, {
-                    method: 'POST', headers: CF_HEADERS, body: JSON.stringify({ name: domainName, account: { id: accountId } })
-                });
-                const createResult = await createResponse.json();
-                if (!createResult.success) throw new Error(createResult.errors[0]?.message || "Gagal menambahkan domain ke Cloudflare.");
-                return res.status(200).json({ message: `Domain ${domainName} berhasil ditambahkan.`, nameservers: createResult.result.name_servers, domain: createResult.result.name });
-            }
-            case "listDnsRecords": {
-                const { zoneId } = data;
-                if (!zoneId) throw new Error("Zone ID diperlukan.");
-                let allRecords = []; let page = 1; let totalPages;
-                do {
-                    const response = await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records?page=${page}&per_page=100`, { headers: CF_HEADERS });
-                    const result = await response.json();
-                    if (!result.success) throw new Error("Gagal mengambil data DNS dari Cloudflare.");
-                    allRecords = allRecords.concat(result.result);
-                    totalPages = result.result_info.total_pages;
-                    page++;
-                } while (page <= totalPages);
-                return res.status(200).json(allRecords);
-            }
-            case "bulkDeleteDnsRecords": {
-                const { zoneId, recordIds } = data;
-                if (!zoneId || !recordIds || recordIds.length === 0) throw new Error("Data tidak lengkap untuk hapus DNS.");
-                const results = await Promise.all(recordIds.map(recordId => 
-                    fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records/${recordId}`, { method: 'DELETE', headers: CF_HEADERS })
-                ));
-                const successCount = results.filter(r => r.ok).length;
-                return res.status(200).json({ message: `${successCount} dari ${recordIds.length} record DNS berhasil dihapus.` });
-            }
-            case "bulkDeleteCloudflareZones": {
-                const { zoneIds } = data;
-                if (!zoneIds || zoneIds.length === 0) throw new Error("Tidak ada zona yang dipilih untuk dihapus.");
-                const results = await Promise.all(zoneIds.map(zoneId => 
-                    fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}`, { method: 'DELETE', headers: CF_HEADERS })
-                ));
-                const successCount = results.filter(r => r.ok).length;
-                return res.status(200).json({ message: `${successCount} dari ${zoneIds.length} zona berhasil dihapus.` });
-            }
+            case "deleteApiKey": { let apiKeys = await readJsonFromGithub(APIKEYS_PATH); const { key } = data; if (!apiKeys[key]) return res.status(404).json({ message: "API Key tidak ditemukan."}); delete apiKeys[key]; await writeJsonToGithub(APIKEYS_PATH, apiKeys, `Delete API Key: ${key}`); return res.status(200).json({ message: `Kunci '${key}' berhasil dihapus.` }); }
+            case "listProjects": { const { data: githubRepos } = await octokit.repos.listForAuthenticatedUser({ sort: 'created', direction: 'desc' }); const vercelRes = await fetch(`${VERCEL_API_BASE}/v9/projects${TEAM_QUERY}`, { headers: VERCEL_HEADERS }); if (!vercelRes.ok) throw new Error("Gagal mengambil data dari Vercel."); const { projects: vercelProjects = [] } = await vercelRes.json(); const allProjects = {}; githubRepos.forEach(repo => { allProjects[repo.name] = { name: repo.name, githubUrl: repo.html_url, isPrivate: repo.private, hasGithub: true, hasVercel: false }; }); vercelProjects.forEach(proj => { if (allProjects[proj.name]) { allProjects[proj.name].hasVercel = true; } else { allProjects[proj.name] = { name: proj.name, githubUrl: null, isPrivate: null, hasGithub: false, hasVercel: true }; } }); return res.status(200).json(Object.values(allProjects)); }
+            case "deleteRepo": { const { repoName } = data; if (!repoName) return res.status(400).json({ message: "Nama repo diperlukan." }); await octokit.repos.delete({ owner: REPO_OWNER, repo: repoName }); return res.status(200).json({ message: `Repositori '${repoName}' berhasil dihapus.` }); }
+            case "deleteVercelProject": { const { projectName } = data; if (!projectName) return res.status(400).json({ message: "Nama proyek diperlukan." }); const deleteRes = await fetch(`${VERCEL_API_BASE}/v9/projects/${projectName}${TEAM_QUERY}`, { method: 'DELETE', headers: VERCEL_HEADERS }); if (!deleteRes.ok) { const error = await deleteRes.json(); throw new Error(`Gagal menghapus proyek Vercel: ${error.error.message}`); } return res.status(200).json({ message: `Proyek Vercel '${projectName}' berhasil dihapus.` }); }
+            case "listAllCloudflareZones": { let allZones = []; let page = 1; let totalPages; do { const response = await fetch(`https://api.cloudflare.com/client/v4/zones?page=${page}&per_page=50`, { headers: CF_HEADERS }); const result = await response.json(); if (!result.success) throw new Error("Gagal mengambil daftar zona dari Cloudflare."); allZones = allZones.concat(result.result); totalPages = result.result_info.total_pages; page++; } while (page <= totalPages); return res.status(200).json(allZones); }
+            case "addCloudflareZone": { const { domainName } = data; if (!domainName) throw new Error("Nama domain diperlukan."); const zonesResponse = await fetch(`https://api.cloudflare.com/client/v4/zones?per_page=1`, { headers: CF_HEADERS }); const zonesResult = await zonesResponse.json(); if (!zonesResult.success) throw new Error(zonesResult.errors[0]?.message || "Gagal memverifikasi akun Cloudflare."); if (zonesResult.result.length === 0 && !process.env.CLOUDFLARE_ACCOUNT_ID) { throw new Error("Tidak dapat menemukan Account ID Cloudflare. Harap tambahkan di .env atau pastikan ada minimal 1 domain di akun Anda."); } const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || zonesResult.result[0].account.id; const createResponse = await fetch(`https://api.cloudflare.com/client/v4/zones`, { method: 'POST', headers: CF_HEADERS, body: JSON.stringify({ name: domainName, account: { id: accountId } }) }); const createResult = await createResponse.json(); if (!createResult.success) throw new Error(createResult.errors[0]?.message || "Gagal menambahkan domain ke Cloudflare."); return res.status(200).json({ message: `Domain ${domainName} berhasil ditambahkan.`, nameservers: createResult.result.name_servers, domain: createResult.result.name }); }
+            case "listDnsRecords": { const { zoneId } = data; if (!zoneId) throw new Error("Zone ID diperlukan."); let allRecords = []; let page = 1; let totalPages; do { const response = await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records?page=${page}&per_page=100`, { headers: CF_HEADERS }); const result = await response.json(); if (!result.success) throw new Error("Gagal mengambil data DNS dari Cloudflare."); allRecords = allRecords.concat(result.result); totalPages = result.result_info.total_pages; page++; } while (page <= totalPages); return res.status(200).json(allRecords); }
+            case "bulkDeleteDnsRecords": { const { zoneId, recordIds } = data; if (!zoneId || !recordIds || recordIds.length === 0) throw new Error("Data tidak lengkap untuk hapus DNS."); const results = await Promise.all(recordIds.map(recordId => fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records/${recordId}`, { method: 'DELETE', headers: CF_HEADERS }))); const successCount = results.filter(r => r.ok).length; return res.status(200).json({ message: `${successCount} dari ${recordIds.length} record DNS berhasil dihapus.` }); }
+            case "bulkDeleteCloudflareZones": { const { zoneIds } = data; if (!zoneIds || zoneIds.length === 0) throw new Error("Tidak ada zona yang dipilih untuk dihapus."); const results = await Promise.all(zoneIds.map(zoneId => fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}`, { method: 'DELETE', headers: CF_HEADERS }))); const successCount = results.filter(r => r.ok).length; return res.status(200).json({ message: `${successCount} dari ${zoneIds.length} zona berhasil dihapus.` }); }
             default:
                 return res.status(400).json({ message: "Aksi tidak dikenal." });
         }
@@ -287,12 +162,12 @@ async function handleJsonActions(req, res) {
     }
 }
 
+
 // --- Logika POST untuk Create Website ---
 async function handleCreateWebsite(request, response) {
     const tempDir = path.join("/tmp", `website-${Date.now()}`);
     try {
         await fsPromises.mkdir(tempDir);
-        // [UPDATE] Batas upload file dinaikkan ke 50MB
         const form = formidable({ maxFileSize: 50 * 1024 * 1024, uploadDir: tempDir });
         const [fields, files] = await form.parse(request);
 
@@ -317,7 +192,6 @@ async function handleCreateWebsite(request, response) {
             if (error.status !== 404) throw error;
         }
 
-        // Ekstrak file dan tentukan root
         const extractDir = path.join(tempDir, "extracted");
         await fsPromises.mkdir(extractDir);
         
@@ -328,41 +202,46 @@ async function handleCreateWebsite(request, response) {
             await fsPromises.rename(uploadedFile.filepath, path.join(extractDir, "index.html"));
         } else throw new Error("Format file tidak didukung.");
         
-        const allExtractedFiles = await getAllFilesRecursive(extractDir);
-        const indexPath = allExtractedFiles.find(f => path.basename(f).toLowerCase() === 'index.html');
-        let uploadRoot;
-        if (indexPath) {
-            uploadRoot = path.dirname(indexPath);
-        } else {
-            uploadRoot = extractDir;
+        // [PERBAIKAN TOTAL] Logika baru untuk menentukan folder utama (uploadRoot)
+        let uploadRoot = extractDir;
+        const itemsInExtractDir = await fsPromises.readdir(extractDir);
+        if (itemsInExtractDir.length === 1) {
+            const singleItemPath = path.join(extractDir, itemsInExtractDir[0]);
+            const stats = await fsPromises.stat(singleItemPath);
+            if (stats.isDirectory()) {
+                // Jika di dalam ZIP hanya ada satu folder, maka folder itulah yang menjadi root
+                uploadRoot = singleItemPath;
+                console.log(`Ditemukan satu folder di dalam ZIP, root diatur ke: ${uploadRoot}`);
+            }
         }
         
-        // Buat repositori GitHub
         await octokit.repos.createForAuthenticatedUser({ name: repoName, private: false });
 
-        // Deteksi Proyek Node.js dan buat vercel.json jika perlu
+        // Deteksi Proyek Node.js dan validasi
         const packageJsonPath = path.join(uploadRoot, 'package.json');
-        let isNodeProject = false;
-        if (fs.existsSync(packageJsonPath)) {
-            isNodeProject = true;
+        const indexHtmlPath = path.join(uploadRoot, 'index.html');
+        let isNodeProject = fs.existsSync(packageJsonPath);
+
+        if (isNodeProject) {
             const vercelJsonPath = path.join(uploadRoot, 'vercel.json');
             if (!fs.existsSync(vercelJsonPath)) {
                 const packageJson = JSON.parse(await fsPromises.readFile(packageJsonPath, 'utf-8'));
                 const mainFile = packageJson.main || 'index.js';
-
+                if (!fs.existsSync(path.join(uploadRoot, mainFile))) {
+                    throw new Error(`Proyek Node.js terdeteksi, tapi file utama '${mainFile}' (dari package.json) tidak ditemukan.`);
+                }
                 const vercelConfig = {
                     version: 2,
                     builds: [{ src: mainFile, use: "@vercel/node" }],
                     routes: [{ src: "/(.*)", dest: mainFile }]
                 };
                 await fsPromises.writeFile(vercelJsonPath, JSON.stringify(vercelConfig, null, 2));
-                console.log(`Dibuat vercel.json untuk proyek Node.js: ${repoName}`);
             }
-        } else if (!indexPath) {
-            throw new Error("File index.html tidak ditemukan dan proyek ini bukan proyek Node.js.");
+        } else if (!fs.existsSync(indexHtmlPath)) {
+            // Jika bukan proyek Node dan tidak ada index.html, upload tidak valid
+            throw new Error("Upload tidak valid. Harus berupa proyek statis (mengandung index.html) atau proyek Node.js (mengandung package.json).");
         }
         
-        // Upload semua file dari root yang sudah ditentukan
         const filesToUpload = await getAllFilesRecursive(uploadRoot);
         for (const filePath of filesToUpload) {
             const content = await fsPromises.readFile(filePath, { encoding: 'base64' });
@@ -375,11 +254,7 @@ async function handleCreateWebsite(request, response) {
             }
         }
         
-        // Buat Proyek di Vercel
-        const vercelProjectConfig = {
-            name: repoName,
-            gitRepository: { type: "github", repo: `${REPO_OWNER}/${repoName}` }
-        };
+        const vercelProjectConfig = { name: repoName, gitRepository: { type: "github", repo: `${REPO_OWNER}/${repoName}` } };
         if (isNodeProject) {
             vercelProjectConfig.framework = "express";
         }
@@ -391,13 +266,11 @@ async function handleCreateWebsite(request, response) {
         const vercelProject = await vercelProjectRes.json();
         if (vercelProject.error) throw new Error(`Vercel Error: ${vercelProject.error.message}`);
         
-        // Trigger deployment pertama
         await fetch(`${VERCEL_API_BASE}/v13/deployments${TEAM_QUERY}`, {
             method: 'POST', headers: VERCEL_HEADERS,
             body: JSON.stringify({ name: repoName, gitSource: { type: 'github', repoId: vercelProject.link.repoId, ref: 'main' }, target: 'production' })
         });
 
-        // Konfigurasi Domain di Vercel dan Cloudflare
         const finalDomain = `${subdomain}.${rootDomain}`;
         await fetch(`${VERCEL_API_BASE}/v10/projects/${repoName}/domains${TEAM_QUERY}`, {
             method: "POST", headers: VERCEL_HEADERS, body: JSON.stringify({ name: finalDomain })
@@ -420,12 +293,11 @@ async function handleCreateWebsite(request, response) {
             body: JSON.stringify({ type: 'A', name: subdomain, content: VERCEL_A_RECORD, proxied: false, ttl: 1 })
         });
         
-        // [FIX] Mencegah error 'find' pada alias yang mungkin belum ada
         const vercelUrl = vercelProject.alias?.find(a => a.domain.endsWith('.vercel.app'))?.domain || `${repoName}.vercel.app`;
 
         return response.status(200).json({
             message: "Proses pembuatan website dimulai!",
-            siteData: { projectName: repoName, vercelUrl: `https://${vercelUrl}`, customUrl: `https://${finalDomain}`, status: 'pending' }
+            siteData: { projectName: repoName, vercelUrl: `httpshttps://${vercelUrl}`, customUrl: `https://${finalDomain}`, status: 'pending' }
         });
     } catch (error) {
         console.error("Create Website Error:", error);
