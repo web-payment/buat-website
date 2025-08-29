@@ -102,19 +102,11 @@ async function getAllFilesRecursive(dirPath) {
 export default async function handler(request, response) {
     if (request.method === 'GET') {
         try {
-            // 1. Ambil domain dari file domains.json
             const domainsFromJson = Object.keys(readDomainsJson());
-
-            // 2. Ambil domain dari akun Cloudflare
             const domainsFromCloudflare = await listAllCloudflareZonesHelper();
-
-            // 3. Gabungkan kedua daftar dan hapus duplikat
             const combinedDomains = [...domainsFromJson, ...domainsFromCloudflare];
             const uniqueDomains = [...new Set(combinedDomains)];
-
-            // 4. Kirim daftar gabungan ke frontend
             return response.status(200).json(uniqueDomains);
-            
         } catch (error) {
             console.error("Error in GET handler:", error);
             return response.status(500).json({ message: "Gagal memuat daftar domain gabungan." });
@@ -138,6 +130,7 @@ async function handleJsonActions(req, res) {
         const { action, data, adminPassword } = req.body;
         const SETTINGS_PATH = "data/settings.json";
         const APIKEYS_PATH = "data/apikeys.json";
+        const DOMAINS_JSON_PATH_GITHUB = "data/domains.json";
 
         // Aksi publik
         switch(action) {
@@ -199,6 +192,43 @@ async function handleJsonActions(req, res) {
             case "listDnsRecords": { const { zoneId } = data; if (!zoneId) throw new Error("Zone ID diperlukan."); let allRecords = []; let page = 1; let totalPages; do { const response = await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records?page=${page}&per_page=100`, { headers: CF_HEADERS }); const result = await response.json(); if (!result.success) throw new Error("Gagal mengambil data DNS dari Cloudflare."); allRecords = allRecords.concat(result.result); totalPages = result.result_info.total_pages; page++; } while (page <= totalPages); return res.status(200).json(allRecords); }
             case "bulkDeleteDnsRecords": { const { zoneId, recordIds } = data; if (!zoneId || !recordIds || recordIds.length === 0) throw new Error("Data tidak lengkap untuk hapus DNS."); const results = await Promise.all(recordIds.map(recordId => fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records/${recordId}`, { method: 'DELETE', headers: CF_HEADERS }))); const successCount = results.filter(r => r.ok).length; return res.status(200).json({ message: `${successCount} dari ${recordIds.length} record DNS berhasil dihapus.` }); }
             case "bulkDeleteCloudflareZones": { const { zoneIds } = data; if (!zoneIds || zoneIds.length === 0) throw new Error("Tidak ada zona yang dipilih untuk dihapus."); const results = await Promise.all(zoneIds.map(zoneId => fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}`, { method: 'DELETE', headers: CF_HEADERS }))); const successCount = results.filter(r => r.ok).length; return res.status(200).json({ message: `${successCount} dari ${zoneIds.length} zona berhasil dihapus.` }); }
+            
+            // --- [BARU] Aksi untuk mengelola domains.json ---
+            case "getManagedDomains": {
+                const domains = await readJsonFromGithub(DOMAINS_JSON_PATH_GITHUB);
+                return res.status(200).json(domains);
+            }
+            case "addManagedDomain": {
+                const { domain, zone, apitoken } = data;
+                if (!domain || !zone || !apitoken) {
+                    return res.status(400).json({ message: "Semua field (domain, zone, apitoken) wajib diisi." });
+                }
+                let domains = await readJsonFromGithub(DOMAINS_JSON_PATH_GITHUB);
+                if (domains[domain]) {
+                    return res.status(409).json({ message: `Domain "${domain}" sudah ada di dalam file.` });
+                }
+                domains[domain] = { zone, apitoken };
+                await writeJsonToGithub(DOMAINS_JSON_PATH_GITHUB, domains, `Add managed domain: ${domain}`);
+                return res.status(200).json({ message: `Domain "${domain}" berhasil ditambahkan.`, domains });
+            }
+            case "deleteManagedDomains": {
+                const { domainsToDelete } = data;
+                 if (!domainsToDelete || domainsToDelete.length === 0) {
+                    return res.status(400).json({ message: "Tidak ada domain yang dipilih untuk dihapus." });
+                }
+                let domains = await readJsonFromGithub(DOMAINS_JSON_PATH_GITHUB);
+                let deletedCount = 0;
+                domainsToDelete.forEach(domain => {
+                    if (domains[domain]) {
+                        delete domains[domain];
+                        deletedCount++;
+                    }
+                });
+                await writeJsonToGithub(DOMAINS_JSON_PATH_GITHUB, domains, `Delete managed domains: ${domainsToDelete.join(', ')}`);
+                return res.status(200).json({ message: `${deletedCount} domain berhasil dihapus.`, domains });
+            }
+            // --- Akhir Aksi Baru ---
+
             default:
                 return res.status(400).json({ message: "Aksi tidak dikenal." });
         }
@@ -323,10 +353,8 @@ async function handleCreateWebsite(request, response) {
         let cfAuthHeaderForDns;
 
         if (domainInfo && domainInfo.apitoken) {
-            // Jika domain ada di JSON, gunakan token spesifiknya
             cfAuthHeaderForDns = { "Authorization": `Bearer ${domainInfo.apitoken}`, "Content-Type": "application/json" };
         } else {
-            // Jika tidak, gunakan Global API Key sebagai fallback
             cfAuthHeaderForDns = CF_HEADERS;
         }
         
