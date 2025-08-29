@@ -28,5 +28,14 @@
       "isPromo": true,
       "promoEndDate": "2025-08-28T19:29:00.000Z"
     }
+  ],
+  "pricingPlans": [
+    {
+      "id": 1756449201242,
+      "name": "Paket 1 hari",
+      "price": 12223,
+      "discountPrice": 5889,
+      "description": "Ggg"
+    }
   ]
 }
