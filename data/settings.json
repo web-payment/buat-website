@@ -1,8 +1,8 @@
 {
   "whatsappNumber": "",
   "normalPrice": 5000,
-  "discountPrice": 25000,
-  "discountEndDate": "2025-08-28T18:23:00.000Z",
+  "discountPrice": 2500,
+  "discountEndDate": "2025-08-29T05:37:00.000Z",
   "pricingTiers": [
     {
       "id": "new_1756408040483",
