@@ -37,10 +37,22 @@ const DOMAINS_JSON_PATH = path.resolve('./data/domains.json');
 const readDomainsJson = () => {
     try {
         if (fs.existsSync(DOMAINS_JSON_PATH)) {
-            return JSON.parse(fs.readFileSync(DOMAINS_JSON_PATH, 'utf-8'));
+            const fileContent = fs.readFileSync(DOMAINS_JSON_PATH, 'utf-8');
+            return JSON.parse(fileContent);
         }
     } catch (e) { console.error("Error reading domains.json:", e); }
     return {};
+};
+
+// *** FUNGSI BANTUAN BARU ***
+// Fungsi bantuan untuk menulis ke file local domains.json
+const writeDomainsJson = async (data) => {
+    try {
+        await fsPromises.writeFile(DOMAINS_JSON_PATH, JSON.stringify(data, null, 2), 'utf-8');
+    } catch (e) {
+        console.error("Error writing to domains.json:", e);
+        throw new Error("Gagal menyimpan perubahan pada file domain.");
+    }
 };
 
 const listAllCloudflareZonesHelper = async () => {
@@ -53,16 +65,16 @@ const listAllCloudflareZonesHelper = async () => {
             const result = await response.json();
             if (!result.success) {
                 console.error("Cloudflare API Error:", result.errors);
-                return []; // Kembalikan array kosong jika gagal
+                return []; 
             }
             allZones = allZones.concat(result.result);
             totalPages = result.result_info.total_pages;
             page++;
         } while (page <= totalPages);
-        return allZones.map(zone => zone.name); // Hanya kembalikan nama domain
+        return allZones.map(zone => zone.name);
     } catch (error) {
         console.error("Failed to fetch from Cloudflare:", error);
-        return []; // Kembalikan array kosong jika ada error network
+        return [];
     }
 };
 
@@ -102,19 +114,11 @@ async function getAllFilesRecursive(dirPath) {
 export default async function handler(request, response) {
     if (request.method === 'GET') {
         try {
-            // 1. Ambil domain dari file domains.json
             const domainsFromJson = Object.keys(readDomainsJson());
-
-            // 2. Ambil domain dari akun Cloudflare
             const domainsFromCloudflare = await listAllCloudflareZonesHelper();
-
-            // 3. Gabungkan kedua daftar dan hapus duplikat
             const combinedDomains = [...domainsFromJson, ...domainsFromCloudflare];
             const uniqueDomains = [...new Set(combinedDomains)];
-
-            // 4. Kirim daftar gabungan ke frontend
             return response.status(200).json(uniqueDomains);
-            
         } catch (error) {
             console.error("Error in GET handler:", error);
             return response.status(500).json({ message: "Gagal memuat daftar domain gabungan." });
@@ -199,6 +203,41 @@ async function handleJsonActions(req, res) {
             case "listDnsRecords": { const { zoneId } = data; if (!zoneId) throw new Error("Zone ID diperlukan."); let allRecords = []; let page = 1; let totalPages; do { const response = await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records?page=${page}&per_page=100`, { headers: CF_HEADERS }); const result = await response.json(); if (!result.success) throw new Error("Gagal mengambil data DNS dari Cloudflare."); allRecords = allRecords.concat(result.result); totalPages = result.result_info.total_pages; page++; } while (page <= totalPages); return res.status(200).json(allRecords); }
             case "bulkDeleteDnsRecords": { const { zoneId, recordIds } = data; if (!zoneId || !recordIds || recordIds.length === 0) throw new Error("Data tidak lengkap untuk hapus DNS."); const results = await Promise.all(recordIds.map(recordId => fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records/${recordId}`, { method: 'DELETE', headers: CF_HEADERS }))); const successCount = results.filter(r => r.ok).length; return res.status(200).json({ message: `${successCount} dari ${recordIds.length} record DNS berhasil dihapus.` }); }
             case "bulkDeleteCloudflareZones": { const { zoneIds } = data; if (!zoneIds || zoneIds.length === 0) throw new Error("Tidak ada zona yang dipilih untuk dihapus."); const results = await Promise.all(zoneIds.map(zoneId => fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}`, { method: 'DELETE', headers: CF_HEADERS }))); const successCount = results.filter(r => r.ok).length; return res.status(200).json({ message: `${successCount} dari ${zoneIds.length} zona berhasil dihapus.` }); }
+            
+            // *** AKSI BARU UNTUK MANAJEMEN domains.json ***
+            case "getDomainsFromJson": {
+                const domains = readDomainsJson();
+                return res.status(200).json(domains);
+            }
+
+            case "addDomainToJson": {
+                const { domainName, zoneId, apiToken } = data;
+                if (!domainName || !zoneId || !apiToken) {
+                    return res.status(400).json({ message: "Semua field (Domain, Zone ID, API Token) wajib diisi." });
+                }
+                const domains = readDomainsJson();
+                if (domains[domainName]) {
+                    return res.status(409).json({ message: `Domain '${domainName}' sudah ada di dalam file.` });
+                }
+                domains[domainName] = { zone: zoneId, apitoken: apiToken };
+                await writeDomainsJson(domains);
+                return res.status(200).json({ message: `Domain '${domainName}' berhasil ditambahkan.` });
+            }
+
+            case "deleteDomainFromJson": {
+                const { domainName } = data;
+                if (!domainName) {
+                    return res.status(400).json({ message: "Nama domain diperlukan." });
+                }
+                const domains = readDomainsJson();
+                if (!domains[domainName]) {
+                    return res.status(404).json({ message: `Domain '${domainName}' tidak ditemukan.` });
+                }
+                delete domains[domainName];
+                await writeDomainsJson(domains);
+                return res.status(200).json({ message: `Domain '${domainName}' berhasil dihapus.` });
+            }
+
             default:
                 return res.status(400).json({ message: "Aksi tidak dikenal." });
         }
