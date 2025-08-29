@@ -47,14 +47,12 @@ async function writeJsonToGithub(filePath, json, message) {
     await octokit.repos.createOrUpdateFileContents({ owner: REPO_OWNER, repo: REPO_NAME_FOR_JSON, path: filePath, message, content, sha });
 }
 
-// [PERBAIKAN] Mengganti fungsi getAllFiles dengan versi modern yang lebih andal
 async function getAllFilesRecursive(dirPath) {
     const dirents = await fsPromises.readdir(dirPath, { withFileTypes: true });
     const files = await Promise.all(dirents.map((dirent) => {
         const res = path.resolve(dirPath, dirent.name);
         return dirent.isDirectory() ? getAllFilesRecursive(res) : res;
     }));
-    // Meratakan array hasil rekursif
     return Array.prototype.concat(...files);
 }
 
@@ -81,7 +79,6 @@ async function handleGetDomains(req, res) {
         return res.status(200).json(Object.keys(domainsData));
     } catch (error) {
         console.error("Error loading domains:", error);
-        // Pastikan folder /data dan file domains.json ada
         if (error.code === 'ENOENT') {
              return res.status(500).json({ message: "File konfigurasi domain tidak ditemukan." });
         }
@@ -290,12 +287,13 @@ async function handleJsonActions(req, res) {
     }
 }
 
-// --- Logika POST untuk Create Website (DIROMBAK TOTAL) ---
+// --- Logika POST untuk Create Website ---
 async function handleCreateWebsite(request, response) {
     const tempDir = path.join("/tmp", `website-${Date.now()}`);
     try {
         await fsPromises.mkdir(tempDir);
-        const form = formidable({ maxFileSize: 10 * 1024 * 1024, uploadDir: tempDir });
+        // [UPDATE] Batas upload file dinaikkan ke 50MB
+        const form = formidable({ maxFileSize: 50 * 1024 * 1024, uploadDir: tempDir });
         const [fields, files] = await form.parse(request);
 
         const { subdomain, rootDomain, apiKey } = Object.fromEntries(Object.entries(fields).map(([k, v]) => [k, v[0]]));
@@ -332,27 +330,23 @@ async function handleCreateWebsite(request, response) {
         
         const allExtractedFiles = await getAllFilesRecursive(extractDir);
         const indexPath = allExtractedFiles.find(f => path.basename(f).toLowerCase() === 'index.html');
-        // Untuk proyek Node, index.html tidak wajib ada
         let uploadRoot;
         if (indexPath) {
             uploadRoot = path.dirname(indexPath);
         } else {
-            // Jika tidak ada index.html, kita anggap root adalah direktori ekstraksi utama
-            // Ini penting untuk proyek Node.js yang mungkin tidak punya index.html
             uploadRoot = extractDir;
         }
         
         // Buat repositori GitHub
         await octokit.repos.createForAuthenticatedUser({ name: repoName, private: false });
 
-        // [FITUR BARU] Deteksi Proyek Node.js dan buat vercel.json jika perlu
+        // Deteksi Proyek Node.js dan buat vercel.json jika perlu
         const packageJsonPath = path.join(uploadRoot, 'package.json');
         let isNodeProject = false;
         if (fs.existsSync(packageJsonPath)) {
             isNodeProject = true;
             const vercelJsonPath = path.join(uploadRoot, 'vercel.json');
             if (!fs.existsSync(vercelJsonPath)) {
-                // Baca package.json untuk menemukan file utama (main)
                 const packageJson = JSON.parse(await fsPromises.readFile(packageJsonPath, 'utf-8'));
                 const mainFile = packageJson.main || 'index.js';
 
@@ -361,21 +355,18 @@ async function handleCreateWebsite(request, response) {
                     builds: [{ src: mainFile, use: "@vercel/node" }],
                     routes: [{ src: "/(.*)", dest: mainFile }]
                 };
-                // Buat file vercel.json
                 await fsPromises.writeFile(vercelJsonPath, JSON.stringify(vercelConfig, null, 2));
                 console.log(`Dibuat vercel.json untuk proyek Node.js: ${repoName}`);
             }
         } else if (!indexPath) {
-            // Jika bukan proyek Node dan tidak ada index.html, baru lempar error
             throw new Error("File index.html tidak ditemukan dan proyek ini bukan proyek Node.js.");
         }
         
-        // [PERBAIKAN] Upload semua file dari root yang sudah ditentukan
+        // Upload semua file dari root yang sudah ditentukan
         const filesToUpload = await getAllFilesRecursive(uploadRoot);
         for (const filePath of filesToUpload) {
             const content = await fsPromises.readFile(filePath, { encoding: 'base64' });
             const githubPath = path.relative(uploadRoot, filePath).replace(/\\/g, "/");
-            // Jangan upload file kosong (jika ada)
             if (githubPath) {
                 await octokit.repos.createOrUpdateFileContents({
                     owner: REPO_OWNER, repo: repoName, path: githubPath,
@@ -390,7 +381,7 @@ async function handleCreateWebsite(request, response) {
             gitRepository: { type: "github", repo: `${REPO_OWNER}/${repoName}` }
         };
         if (isNodeProject) {
-            vercelProjectConfig.framework = "express"; // Beri petunjuk ke Vercel
+            vercelProjectConfig.framework = "express";
         }
 
         const vercelProjectRes = await fetch(`${VERCEL_API_BASE}/v9/projects${TEAM_QUERY}`, {
@@ -429,7 +420,8 @@ async function handleCreateWebsite(request, response) {
             body: JSON.stringify({ type: 'A', name: subdomain, content: VERCEL_A_RECORD, proxied: false, ttl: 1 })
         });
         
-        const vercelUrl = vercelProject.alias.find(a => a.domain.endsWith('.vercel.app'))?.domain || `${repoName}.vercel.app`;
+        // [FIX] Mencegah error 'find' pada alias yang mungkin belum ada
+        const vercelUrl = vercelProject.alias?.find(a => a.domain.endsWith('.vercel.app'))?.domain || `${repoName}.vercel.app`;
 
         return response.status(200).json({
             message: "Proses pembuatan website dimulai!",
