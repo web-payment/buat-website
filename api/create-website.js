@@ -297,7 +297,7 @@ async function handleCreateWebsite(request, response) {
 
         return response.status(200).json({
             message: "Proses pembuatan website dimulai!",
-            siteData: { projectName: repoName, vercelUrl: `httpshttps://${vercelUrl}`, customUrl: `https://${finalDomain}`, status: 'pending' }
+            siteData: { projectName: repoName, vercelUrl: `https://${vercelUrl}`, customUrl: `https://${finalDomain}`, status: 'pending' }
         });
     } catch (error) {
         console.error("Create Website Error:", error);
