@@ -1,6 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
     // === Elemen UI ===
-    const body = document.body;
     const loadingOverlay = document.getElementById('loading-overlay');
     const loginScreen = document.getElementById('login-screen');
     const adminPanel = document.getElementById('admin-panel');
@@ -10,7 +9,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const keyListContainer = document.getElementById('api-key-list-container');
     const manageProjectsBtn = document.getElementById('manage-projects-btn');
     const projectModal = document.getElementById('project-modal');
-    const projectModalCloseBtn = projectModal.querySelector('.modal-close');
+    const modalCloseBtn = projectModal.querySelector('.modal-close');
     const modalBody = document.getElementById('modal-body');
     const confirmationModal = document.getElementById('confirmation-modal');
     const confirmTitle = document.getElementById('confirmation-modal-title');
@@ -23,26 +22,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const apiKeyCopyBtn = document.getElementById('apikey-copy-btn');
     const manageDomainsBtn = document.getElementById('manage-domains-btn');
     const cloudflareModal = document.getElementById('cloudflare-modal');
-    const cloudflareModalCloseBtn = cloudflareModal.querySelector('.modal-close');
     const cloudflareModalTitle = document.getElementById('cloudflare-modal-title');
     const cloudflareModalBody = document.getElementById('cloudflare-modal-body');
     const cfSuccessModal = document.getElementById('cf-success-modal');
     const cfSuccessMessage = document.getElementById('cf-success-message');
     const cfNameserverList = document.getElementById('cf-nameserver-list');
     const cfSuccessOkBtn = document.getElementById('cf-success-ok-btn');
-    const generalSettingsForm = document.getElementById('general-settings-form');
+    
+    // ELEMEN BARU
+    const settingsForm = document.getElementById('settings-form');
     const waInput = document.getElementById('whatsapp-number');
+    const normalPriceInput = document.getElementById('normal-price');
+    const discountPriceInput = document.getElementById('discount-price');
     const discountDateInput = document.getElementById('discount-end-date');
-    const logoutBtn = document.getElementById('logout-btn-nav');
-    const navButtons = document.querySelectorAll('.nav-btn');
-    const sections = document.querySelectorAll('.admin-section');
-    const pricingPlanList = document.getElementById('pricing-plan-list');
-    const addPlanBtn = document.getElementById('add-plan-btn');
-    const planEditorModal = document.getElementById('plan-editor-modal');
-    const planEditorForm = document.getElementById('plan-editor-form');
-    const planEditorTitle = document.getElementById('plan-editor-title');
-    const planIdInput = document.getElementById('plan-id');
-    const planEditorModalCloseBtn = planEditorModal.querySelector('.modal-close');
+    const logoutBtn = document.getElementById('logout-btn');
 
     let apiKeyTextToCopy = '';
 
@@ -67,6 +60,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const openModal = (modal) => modal.style.display = 'flex';
     const closeModal = (modal) => modal.style.display = 'none';
+    modalCloseBtn.addEventListener('click', () => closeModal(projectModal));
+    projectModal.addEventListener('click', (e) => { if (e.target === projectModal) closeModal(projectModal); });
+    cloudflareModal.querySelector('.modal-close').addEventListener('click', () => closeModal(cloudflareModal));
     
     const showConfirmation = (title, message) => {
         confirmTitle.textContent = title;
@@ -80,8 +76,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const showApiKeySuccessPopup = (newKey) => {
         const expiryText = newKey.expires_at === 'permanent' ? 'Permanen' : formatFullDate(newKey.expires_at);
-        apiKeyDetailsContainer.innerHTML = `<div class="detail-item"><span>Kunci API</span><span>${newKey.name}</span></div><div class="detail-item"><span>Kadaluwarsa</span><span>${expiryText}</span></div>`;
-        apiKeyTextToCopy = `Ini adalah data apikey anda\nApikey: ${newKey.name}\nKadaluwarsa: ${expiryText}`;
+        apiKeyDetailsContainer.innerHTML = `<div class="detail-item"><span class="detail-label">Kunci API</span><span class="detail-value">${newKey.name}</span></div><div class="detail-item"><span class="detail-label">Dibuat</span><span class="detail-value">${formatFullDate(newKey.created_at)}</span></div><div class="detail-item"><span class="detail-label">Kadaluwarsa</span><span class="detail-value">${expiryText}</span></div>`;
+        const notes = "Harap simpan detail kunci ini dengan baik. Informasi ini bersifat rahasia dan tidak akan ditampilkan lagi demi keamanan Anda.";
+        apiKeyTextToCopy = `Ini adalah data apikey anda\n-------------------\nApikey: ${newKey.name}\nTanggal buat: ${formatFullDate(newKey.created_at)}\nTanggal kadaluarsa: ${expiryText}\n-------------------\nNotes:\n${notes}`;
         openModal(apiKeySuccessModal);
     };
 
@@ -103,131 +100,170 @@ document.addEventListener('DOMContentLoaded', () => {
     const renderApiKeys = (keys) => {
         keyListContainer.innerHTML = '';
         if (Object.keys(keys).length === 0) { keyListContainer.innerHTML = '<p>Belum ada API Key yang dibuat.</p>'; return; }
-        Object.keys(keys).forEach(key => {
+        for (const key in keys) {
             const keyData = keys[key];
             const expiry = keyData.expires_at === 'permanent' ? 'Permanen' : `Kadaluwarsa: ${formatFullDate(keyData.expires_at)}`;
             const item = document.createElement('div');
             item.className = 'key-item';
             item.innerHTML = `<div class="key-info"><span class="key-name">${key}</span><span class="key-expiry">${expiry}</span></div><button class="delete-btn" data-key="${key}"><i class="fas fa-trash-alt"></i></button>`;
             keyListContainer.appendChild(item);
-        });
+        }
     };
     
     const renderProjects = (projects) => {
         modalBody.innerHTML = '';
         if (projects.length === 0) { modalBody.innerHTML = '<p>Tidak ada proyek/repositori yang ditemukan.</p>'; return; }
-        let projectHtml = projects.map(proj => {
+        let projectHtml = '';
+        projects.forEach(proj => {
             const githubButton = proj.hasGithub ? `<button class="delete-btn delete-repo-btn" data-name="${proj.name}">Hapus Repo</button>` : '';
             const vercelButton = proj.hasVercel ? `<button class="delete-btn delete-vercel-btn" data-name="${proj.name}">Hapus Vercel</button>` : '';
             const repoInfo = proj.hasGithub ? `<a href="${proj.githubUrl}" target="_blank">${proj.name}</a><span>${proj.isPrivate ? 'Private' : 'Public'}</span>` : `<strong>${proj.name}</strong><span>(Hanya ada di Vercel)</span>`;
-            return `<div class="repo-item"><div class="item-info">${repoInfo}</div><div class="repo-actions">${githubButton}${vercelButton}</div></div>`;
-        }).join('');
+            projectHtml += `<div class="repo-item"><div class="item-info">${repoInfo}</div><div class="repo-actions">${githubButton}${vercelButton}</div></div>`;
+        });
         modalBody.innerHTML = `<ul class="list-item-container">${projectHtml}</ul>`;
     };
     
-    const renderPricingPlans = (plans = []) => {
-        pricingPlanList.innerHTML = '';
-        if (plans.length === 0) {
-            pricingPlanList.innerHTML = '<p>Belum ada paket harga yang ditambahkan.</p>';
-            return;
-        }
-        plans.forEach(plan => {
-            const planEl = document.createElement('div');
-            planEl.className = 'plan-item';
-            planEl.innerHTML = `
-                <div class="plan-info">
-                    <h4>${plan.name}</h4>
-                    <p>Normal: Rp ${plan.normalPrice.toLocaleString('id-ID')} | Diskon: Rp ${(plan.discountPrice || 0).toLocaleString('id-ID')}</p>
-                </div>
-                <div class="plan-actions">
-                    <button class="edit-btn" data-id='${plan.id}'>Edit</button>
-                    <button class="delete-btn" data-id='${plan.id}'>Hapus</button>
-                </div>
-            `;
-            pricingPlanList.appendChild(planEl);
-        });
-    };
-
-    const openPlanEditor = (plan = null) => {
-        planEditorForm.reset();
-        if (plan) {
-            planEditorTitle.textContent = 'Edit Paket Harga';
-            planIdInput.value = plan.id;
-            document.getElementById('plan-name').value = plan.name;
-            document.getElementById('plan-normal-price').value = plan.normalPrice;
-            document.getElementById('plan-discount-price').value = plan.discountPrice || '';
-            document.getElementById('plan-description').value = plan.description || '';
-        } else {
-            planEditorTitle.textContent = 'Tambah Paket Harga';
-            planIdInput.value = '';
-        }
-        openModal(planEditorModal);
-    };
-
+    // === Logika Cloudflare ===
     const showCloudflareSuccessPopup = (data) => {
         cfSuccessMessage.innerHTML = `Domain <strong>${data.domain}</strong> berhasil ditambahkan ke akun Cloudflare Anda.`;
         cfNameserverList.innerHTML = data.nameservers.map(ns => `<li class="nameserver-item"><span>${ns}</span><button class="copy-ns-btn" data-ns="${ns}">Copy</button></li>`).join('');
         openModal(cfSuccessModal);
     };
+    const setupBulkDeleteControls = (container, listType, context) => {
+        const selectAllCheckbox = container.querySelector('.select-all-checkbox');
+        const checkboxes = container.querySelectorAll('.item-checkbox');
+        const bulkDeleteBtn = container.querySelector('.bulk-delete-btn');
+        const updateButtonVisibility = () => {
+            const checkedCount = container.querySelectorAll('.item-checkbox:checked').length;
+            bulkDeleteBtn.style.display = checkedCount > 0 ? 'inline-flex' : 'none';
+            bulkDeleteBtn.textContent = `Hapus ${checkedCount} Item Terpilih`;
+        };
+        if(selectAllCheckbox) selectAllCheckbox.addEventListener('change', (e) => {
+            checkboxes.forEach(cb => cb.checked = e.target.checked);
+            updateButtonVisibility();
+        });
+        checkboxes.forEach(cb => cb.addEventListener('change', () => {
+            if(selectAllCheckbox) selectAllCheckbox.checked = [...checkboxes].every(c => c.checked);
+            updateButtonVisibility();
+        }));
+        if(bulkDeleteBtn) bulkDeleteBtn.addEventListener('click', async () => {
+            const selectedItems = [...checkboxes].filter(cb => cb.checked);
+            const selectedIds = selectedItems.map(cb => cb.value);
+            const selectedNames = selectedItems.map(cb => cb.dataset.name);
+            let confirmed = false;
+            if (listType === 'zones') {
+                const confirmationMessage = `Anda akan MENGHAPUS PERMANEN ${selectedIds.length} zona berikut:\n\n${selectedNames.join('\n')}\n\nLanjutkan?`;
+                confirmed = await showConfirmation('KONFIRMASI HAPUS ZONA', confirmationMessage);
+            } else {
+                confirmed = await showConfirmation('Hapus Record DNS?', `Anda yakin ingin menghapus ${selectedIds.length} record DNS terpilih?`);
+            }
+            if (confirmed) {
+                bulkDeleteBtn.textContent = 'Menghapus...'; bulkDeleteBtn.disabled = true;
+                try {
+                    let result;
+                    if (listType === 'zones') {
+                        result = await callApi('bulkDeleteCloudflareZones', { zoneIds: selectedIds });
+                    } else { // dns
+                        result = await callApi('bulkDeleteDnsRecords', { zoneId: context.zoneId, recordIds: selectedIds });
+                    }
+                    showNotification(result.message, 'success');
+                    if (listType === 'zones') manageDomainsBtn.click();
+                    else showDnsRecordsView(context.zoneId, context.zoneName);
+                } catch (error) {
+                    showNotification(error.message, 'error');
+                } finally {
+                     bulkDeleteBtn.disabled = false;
+                     updateButtonVisibility();
+                }
+            }
+        });
+    };
+    const renderCloudflareZones = (zones) => {
+        cloudflareModalTitle.textContent = 'Manajemen Zona Cloudflare';
+        let listHtml = zones.map(zone => `
+            <li class="list-item" data-search-term="${zone.name.toLowerCase()}">
+                <input type="checkbox" class="item-checkbox" value="${zone.id}" data-name="${zone.name}">
+                <div class="item-info">
+                    <strong>${zone.name}</strong>
+                    <span>Status: ${zone.status}</span>
+                </div>
+                <button class="manage-dns-btn" data-zone-id="${zone.id}" data-zone-name="${zone.name}">Kelola DNS</button>
+            </li>`).join('');
 
-    // === Fungsi untuk memuat konten dinamis ===
+        cloudflareModalBody.innerHTML = `
+            <div class="list-toolbar">
+                <form id="add-domain-form" class="add-domain-form">
+                    <input type="text" id="new-domain-name" placeholder="Masukkan domain baru..." required>
+                    <button type="submit">Tambah</button>
+                </form>
+            </div>
+            <div class="list-toolbar">
+                <input type="checkbox" class="select-all-checkbox" title="Pilih Semua">
+                <form class="search-form" style="margin-left: 10px;"><input type="search" id="zone-search-input" placeholder="Cari domain..."></form>
+                <button class="bulk-delete-btn">Hapus Terpilih</button>
+            </div>
+            <ul class="list-item-container">${zones.length > 0 ? listHtml : '<li>Tidak ada zona ditemukan.</li>'}</ul>`;
+        setupBulkDeleteControls(cloudflareModalBody, 'zones');
+    };
+    const renderDnsRecords = (records, zoneId, zoneName) => {
+        cloudflareModalTitle.textContent = `Record DNS untuk ${zoneName}`;
+        let listHtml = records.map(rec => {
+            const searchTerm = `${rec.name} ${rec.type} ${rec.content}`.toLowerCase();
+            return `<li class="list-item" data-search-term="${searchTerm}">
+                <input type="checkbox" class="item-checkbox" value="${rec.id}" data-name="${rec.name}">
+                <div class="item-info">
+                    <strong>${rec.name}</strong>
+                    <span>${rec.type} &rarr; ${rec.content}</span>
+                </div>
+            </li>`;
+        }).join('');
+        
+        cloudflareModalBody.innerHTML = `
+            <div class="list-toolbar">
+                 <button id="cloudflare-modal-back-btn">&larr; Kembali</button>
+                 <input type="checkbox" class="select-all-checkbox" title="Pilih Semua">
+                 <form class="search-form" style="margin-left: 10px;"><input type="search" id="dns-search-input" placeholder="Cari record..."></form>
+                 <button class="bulk-delete-btn">Hapus Terpilih</button>
+            </div>
+            <ul class="list-item-container">${records.length > 0 ? listHtml : '<li>Tidak ada record DNS.</li>'}</ul>`;
+        cloudflareModalBody.querySelector('#cloudflare-modal-back-btn').onclick = () => manageDomainsBtn.click();
+        setupBulkDeleteControls(cloudflareModalBody, 'dns', { zoneId, zoneName });
+    };
+    const showDnsRecordsView = async (zoneId, zoneName) => {
+        cloudflareModalBody.innerHTML = `<p>Memuat record DNS untuk ${zoneName}...</p>`;
+        try {
+            const records = await callApi('listDnsRecords', { zoneId });
+            renderDnsRecords(records, zoneId, zoneName);
+        } catch (error) {
+            showNotification(error.message, 'error');
+            manageDomainsBtn.click();
+        }
+    };
+    
+    // --- FUNGSI BARU UNTUK PENGATURAN ---
     const loadSettings = async () => {
         try {
-            const settings = await callApi('getSettings');
-            waInput.value = settings.whatsappNumber || '';
-            if (settings.discountEndDate) {
-                const date = new Date(settings.discountEndDate);
+            const res = await callApi('getSettings');
+            waInput.value = res.whatsappNumber;
+            normalPriceInput.value = res.normalPrice;
+            discountPriceInput.value = res.discountPrice;
+            if (res.discountEndDate) {
+                const date = new Date(res.discountEndDate);
                 date.setMinutes(date.getMinutes() - date.getTimezoneOffset());
                 discountDateInput.value = date.toISOString().slice(0, 16);
-            } else {
-                discountDateInput.value = '';
             }
-            renderPricingPlans(settings.pricingPlans);
         } catch (error) {
             showNotification(error.message, 'error');
         }
     };
-    const loadApiKeys = async () => {
-        try {
-            const keys = await callApi('getApiKeys');
-            renderApiKeys(keys);
-        } catch (error) {
-             showNotification(error.message, 'error');
-             keyListContainer.innerHTML = `<p style="color:var(--error-color);">${error.message}</p>`;
-        }
-    }
     
     // === Fungsi Utama & Event Listener ===
-    const showAdminPanelUI = () => {
-        body.classList.remove('login-view');
-        body.classList.add('admin-view');
+    const showAdminPanel = (keys) => {
         loginScreen.style.display = 'none';
         adminPanel.style.display = 'block';
-        loadSettings(); // Muat tab default
+        renderApiKeys(keys);
+        loadSettings(); // Memuat pengaturan setelah login berhasil
     };
-    
-    const showLoginUI = () => {
-        body.classList.remove('admin-view');
-        body.classList.add('login-view');
-        adminPanel.style.display = 'none';
-        loginScreen.style.display = 'block';
-    };
-
-    navButtons.forEach(button => {
-        button.addEventListener('click', () => {
-            const targetId = button.dataset.target;
-            if (!targetId) return; 
-
-            navButtons.forEach(btn => btn.classList.remove('active'));
-            sections.forEach(sec => sec.classList.remove('active'));
-            
-            button.classList.add('active');
-            document.getElementById(targetId).classList.add('active');
-
-            if (targetId === 'pengaturan') loadSettings();
-            else if (targetId === 'kelola-produk') loadApiKeys();
-        });
-    });
 
     loginBtn.addEventListener('click', async () => {
         const password = passwordInput.value;
@@ -235,8 +271,8 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('adminPassword', password); 
         loginBtn.textContent = 'Memverifikasi...'; loginBtn.disabled = true;
         try {
-            await callApi('getApiKeys');
-            showAdminPanelUI();
+            const keys = await callApi('getApiKeys');
+            showAdminPanel(keys);
             showNotification('Login berhasil!', 'success');
         } catch (error) {
             showNotification(`Login Gagal: ${error.message}`, 'error');
@@ -249,34 +285,37 @@ document.addEventListener('DOMContentLoaded', () => {
     const tryAutoLogin = async () => {
         try {
             if (localStorage.getItem('adminPassword')) {
-                await callApi('getApiKeys');
-                showAdminPanelUI();
+                const keys = await callApi('getApiKeys');
+                showAdminPanel(keys);
             } else {
-                showLoginUI();
+                loginScreen.style.display = 'block';
             }
         } catch (error) {
             localStorage.removeItem('adminPassword');
-            showLoginUI();
+            loginScreen.style.display = 'block';
         } finally {
             loadingOverlay.classList.add('hidden');
         }
     };
-    
-    generalSettingsForm.addEventListener('submit', async (e) => {
+
+    settingsForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const button = e.target.querySelector('button');
         button.textContent = 'Menyimpan...'; button.disabled = true;
+
         const data = {
             whatsappNumber: waInput.value.trim(),
+            normalPrice: parseInt(normalPriceInput.value, 10),
+            discountPrice: parseInt(discountPriceInput.value, 10),
             discountEndDate: discountDateInput.value ? new Date(discountDateInput.value).toISOString() : null
         };
         try {
-            const res = await callApi('updateGeneralSettings', data);
+            const res = await callApi('updateSettings', data);
             showNotification(res.message, 'success');
         } catch (error) {
             showNotification(error.message, 'error');
         } finally {
-            button.textContent = 'Simpan Pengaturan Umum'; button.disabled = false;
+            button.textContent = 'Simpan Pengaturan'; button.disabled = false;
         }
     });
 
@@ -301,7 +340,8 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const result = await callApi('createApiKey', data);
             showApiKeySuccessPopup(result.newKey);
-            e.target.reset();
+            document.getElementById('new-apikey-name').value = '';
+            document.getElementById('permanent-key').checked = false;
             document.getElementById('duration-section').style.display = 'block';
         } catch (error) {
             showNotification(`Gagal: ${error.message}`, 'error');
@@ -310,9 +350,14 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    apiKeySuccessOkBtn.addEventListener('click', () => {
+    apiKeySuccessOkBtn.addEventListener('click', async () => {
         closeModal(apiKeySuccessModal);
-        loadApiKeys();
+        try {
+            const newKeys = await callApi('getApiKeys');
+            renderApiKeys(newKeys);
+        } catch (error) {
+            showNotification('Gagal memuat ulang daftar kunci.', 'error');
+        }
     });
     
     apiKeyCopyBtn.addEventListener('click', () => {
@@ -321,6 +366,9 @@ document.addEventListener('DOMContentLoaded', () => {
             setTimeout(() => {
                 apiKeyCopyBtn.innerHTML = '<i class="fas fa-copy"></i> Copy';
             }, 2000);
+        }).catch(err => {
+            console.error('Gagal menyalin teks: ', err);
+            showNotification('Gagal menyalin.', 'error');
         });
     });
 
@@ -340,25 +388,32 @@ document.addEventListener('DOMContentLoaded', () => {
         const targetButton = e.target.closest('button.delete-btn');
         if (!targetButton) return;
         const repoName = targetButton.dataset.name;
-        let action, title, message;
+        let action, title, message, originalText;
         if (targetButton.classList.contains('delete-repo-btn')) {
             action = 'deleteRepo'; title = 'Hapus Repositori GitHub?';
-            message = `Yakin menghapus permanen repositori '${repoName}' di GitHub?`;
+            message = `Tindakan ini akan menghapus permanen repositori '${repoName}' di GitHub.`;
+            originalText = 'Hapus Repo';
         } else if (targetButton.classList.contains('delete-vercel-btn')) {
             action = 'deleteVercelProject'; title = 'Hapus Proyek Vercel?';
-            message = `Yakin menghapus proyek '${repoName}' dari Vercel?`;
+            message = `Ini akan menghapus proyek '${repoName}' dari Vercel, termasuk semua deployment.`;
+            originalText = 'Hapus Vercel';
         } else { return; }
-        
         const confirmed = await showConfirmation(title, message);
         if (confirmed) {
             targetButton.textContent = 'Menghapus...'; targetButton.disabled = true;
             try {
                 const result = await callApi(action, { repoName: repoName, projectName: repoName });
                 showNotification(result.message, 'success');
-                manageProjectsBtn.click(); // Refresh list
+                const actionsContainer = targetButton.parentElement;
+                targetButton.remove();
+                if (actionsContainer.children.length === 0) {
+                    const repoItem = actionsContainer.parentElement;
+                    repoItem.style.opacity = '0';
+                    setTimeout(() => repoItem.remove(), 300);
+                }
             } catch (error) {
                 showNotification(error.message, 'error');
-                targetButton.disabled = false; // Re-enable on failure
+                targetButton.textContent = originalText; targetButton.disabled = false;
             }
         }
     });
@@ -368,68 +423,64 @@ document.addEventListener('DOMContentLoaded', () => {
         openModal(cloudflareModal);
         try {
             const zones = await callApi('listAllCloudflareZones');
-            // renderCloudflareZones(zones); // Logic for this is complex, ensure it's fully implemented
-            cloudflareModalBody.innerHTML = '<p>Fungsi render Cloudflare belum diimplementasikan sepenuhnya di kode ini.</p>'
+            renderCloudflareZones(zones);
         } catch (error) {
             showNotification(error.message, 'error');
             cloudflareModalBody.innerHTML = `<p style="color: var(--error-color);">Gagal memuat. Pastikan CLOUDFLARE_API_TOKEN sudah benar.</p>`;
         }
     });
     
-    addPlanBtn.addEventListener('click', () => openPlanEditor());
-    planEditorModalCloseBtn.addEventListener('click', () => closeModal(planEditorModal));
+    cfSuccessOkBtn.addEventListener('click', () => {
+        closeModal(cfSuccessModal);
+        manageDomainsBtn.click();
+    });
 
-    pricingPlanList.addEventListener('click', async (e) => {
-        const target = e.target.closest('button');
-        if (!target) return;
-        
-        const planId = parseInt(target.dataset.id);
-
-        if (target.classList.contains('edit-btn')) {
-            const settings = await callApi('getSettings');
-            const planToEdit = settings.pricingPlans.find(p => p.id === planId);
-            if (planToEdit) openPlanEditor(planToEdit);
-        }
-
-        if (target.classList.contains('delete-btn')) {
-            const confirmed = await showConfirmation('Hapus Paket?', 'Anda yakin ingin menghapus paket harga ini?');
-            if (confirmed) {
-                try {
-                    await callApi('deletePricingPlan', { planId });
-                    showNotification('Paket berhasil dihapus', 'success');
-                    loadSettings(); // Muat ulang
-                } catch (error) {
-                    showNotification(error.message, 'error');
-                }
-            }
+    cfNameserverList.addEventListener('click', (e) => {
+        if (e.target.classList.contains('copy-ns-btn')) {
+            const ns = e.target.dataset.ns;
+            navigator.clipboard.writeText(ns).then(() => {
+                e.target.textContent = 'Tersalin!';
+                setTimeout(() => { e.target.textContent = 'Copy'; }, 2000);
+            });
         }
     });
 
-    planEditorForm.addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const planId = planIdInput.value ? parseInt(planIdInput.value) : null;
-        const planData = {
-            id: planId,
-            name: document.getElementById('plan-name').value,
-            normalPrice: parseInt(document.getElementById('plan-normal-price').value),
-            discountPrice: parseInt(document.getElementById('plan-discount-price').value) || 0,
-            description: document.getElementById('plan-description').value,
-        };
-        
-        const button = e.target.querySelector('button[type="submit"]');
-        button.textContent = 'Menyimpan...'; button.disabled = true;
+    cloudflareModalBody.addEventListener('input', (e) => {
+        const target = e.target;
+        if (target.matches('#zone-search-input, #dns-search-input')) {
+            const searchTerm = target.value.toLowerCase();
+            const listContainer = target.closest('#cloudflare-modal-body').querySelector('.list-item-container');
+            const items = listContainer.querySelectorAll('.list-item');
+            items.forEach(item => {
+                const itemSearchTerm = item.dataset.searchTerm || '';
+                item.style.display = itemSearchTerm.includes(searchTerm) ? 'flex' : 'none';
+            });
+        }
+    });
 
-        try {
-            const action = planId ? 'updatePricingPlan' : 'addPricingPlan';
-            const message = planId ? 'Paket berhasil diperbarui' : 'Paket berhasil ditambahkan';
-            await callApi(action, planData);
-            showNotification(message, 'success');
-            closeModal(planEditorModal);
-            loadSettings(); // Muat ulang
-        } catch (error) {
-            showNotification(error.message, 'error');
-        } finally {
-            button.textContent = 'Simpan Paket'; button.disabled = false;
+    cloudflareModalBody.addEventListener('submit', (e) => {
+        if (e.target.matches('.search-form, #add-domain-form')) e.preventDefault();
+    });
+
+    cloudflareModalBody.addEventListener('click', async (e) => {
+        if (e.target.closest('#add-domain-form button')) {
+            e.preventDefault();
+            const form = e.target.closest('#add-domain-form');
+            const input = form.querySelector('#new-domain-name');
+            const button = form.querySelector('button');
+            const domainName = input.value.trim();
+            if (!domainName) return showNotification('Nama domain tidak boleh kosong.', 'error');
+            button.textContent = 'Menambahkan...'; button.disabled = true;
+            try {
+                const result = await callApi('addCloudflareZone', { domainName });
+                closeModal(cloudflareModal);
+                showCloudflareSuccessPopup(result);
+                input.value = '';
+            } catch (error) { showNotification(error.message, 'error');
+            } finally { button.textContent = 'Tambah'; button.disabled = false; }
+        }
+        if (e.target.classList.contains('manage-dns-btn')) {
+            showDnsRecordsView(e.target.dataset.zoneId, e.target.dataset.zoneName);
         }
     });
 
@@ -442,7 +493,8 @@ document.addEventListener('DOMContentLoaded', () => {
                 try {
                     const result = await callApi('deleteApiKey', { key });
                     showNotification(result.message, 'success');
-                    loadApiKeys();
+                    const newKeys = await callApi('getApiKeys');
+                    renderApiKeys(newKeys);
                 } catch (error) {
                     showNotification(`Gagal: ${error.message}`, 'error');
                 }
@@ -457,7 +509,8 @@ document.addEventListener('DOMContentLoaded', () => {
     // === Inisialisasi Aplikasi ===
     const init = () => {
         const themeToggle = document.getElementById('theme-toggle');
-        const savedTheme = localStorage.getItem('theme_preference_v1') || 'dark';
+        const body = document.body;
+        const savedTheme = localStorage.getItem('theme_preference_v1') || 'light';
         if (savedTheme === 'dark') { body.classList.add('dark-mode'); themeToggle.innerHTML = '<i class="fas fa-sun"></i>'; } 
         else { body.classList.remove('dark-mode'); themeToggle.innerHTML = '<i class="fas fa-moon"></i>'; }
         themeToggle.addEventListener('click', () => {
@@ -466,11 +519,6 @@ document.addEventListener('DOMContentLoaded', () => {
             if (newTheme === 'dark') { body.classList.add('dark-mode'); themeToggle.innerHTML = '<i class="fas fa-sun"></i>'; }
             else { body.classList.remove('dark-mode'); themeToggle.innerHTML = '<i class="fas fa-moon"></i>'; }
         });
-
-        // Close modal listeners
-        projectModalCloseBtn.addEventListener('click', () => closeModal(projectModal));
-        cloudflareModalCloseBtn.addEventListener('click', () => closeModal(cloudflareModal));
-        
         setTimeout(tryAutoLogin, 700);
     };
     
