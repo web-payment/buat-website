@@ -16,26 +16,56 @@ const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const REPO_NAME_FOR_JSON = process.env.REPO_NAME_FOR_JSON;
 const VERCEL_A_RECORD = '76.76.21.21';
 
-// [PERUBAHAN PENTING] Mengambil Email dan Global API Key
-const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN; // Ini sekarang adalah Global API Key
-const CLOUDFLARE_EMAIL = process.env.CLOUDFLARE_EMAIL; // Email Cloudflare Anda
+const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
+const CLOUDFLARE_EMAIL = process.env.CLOUDFLARE_EMAIL;
 const CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
-
 
 const octokit = new Octokit({ auth: GITHUB_TOKEN });
 const VERCEL_API_BASE = `https://api.vercel.com`;
 const VERCEL_HEADERS = { "Authorization": `Bearer ${VERCEL_TOKEN}`, "Content-Type": "application/json" };
 const TEAM_QUERY = VERCEL_TEAM_ID ? `?teamId=${VERCEL_TEAM_ID}` : '';
 
-// [PERUBAHAN PENTING] Mengubah cara otentikasi ke Cloudflare
 const CF_HEADERS = {
     "X-Auth-Email": CLOUDFLARE_EMAIL,
     "X-Auth-Key": CLOUDFLARE_API_TOKEN,
     "Content-Type": "application/json"
 };
 
+// --- Fungsi Bantuan ---
+const DOMAINS_JSON_PATH = path.resolve('./data/domains.json');
 
-// --- Helper Functions ---
+const readDomainsJson = () => {
+    try {
+        if (fs.existsSync(DOMAINS_JSON_PATH)) {
+            return JSON.parse(fs.readFileSync(DOMAINS_JSON_PATH, 'utf-8'));
+        }
+    } catch (e) { console.error("Error reading domains.json:", e); }
+    return {};
+};
+
+const listAllCloudflareZonesHelper = async () => {
+    let allZones = [];
+    let page = 1;
+    let totalPages;
+    try {
+        do {
+            const response = await fetch(`https://api.cloudflare.com/client/v4/zones?page=${page}&per_page=50`, { headers: CF_HEADERS });
+            const result = await response.json();
+            if (!result.success) {
+                console.error("Cloudflare API Error:", result.errors);
+                return []; // Kembalikan array kosong jika gagal
+            }
+            allZones = allZones.concat(result.result);
+            totalPages = result.result_info.total_pages;
+            page++;
+        } while (page <= totalPages);
+        return allZones.map(zone => zone.name); // Hanya kembalikan nama domain
+    } catch (error) {
+        console.error("Failed to fetch from Cloudflare:", error);
+        return []; // Kembalikan array kosong jika ada error network
+    }
+};
+
 async function readJsonFromGithub(filePath) {
     try {
         const { data } = await octokit.repos.getContent({ owner: REPO_OWNER, repo: REPO_NAME_FOR_JSON, path: filePath });
@@ -71,8 +101,26 @@ async function getAllFilesRecursive(dirPath) {
 // --- Handler Utama ---
 export default async function handler(request, response) {
     if (request.method === 'GET') {
-        return handleGetDomains(request, response);
+        try {
+            // 1. Ambil domain dari file domains.json
+            const domainsFromJson = Object.keys(readDomainsJson());
+
+            // 2. Ambil domain dari akun Cloudflare
+            const domainsFromCloudflare = await listAllCloudflareZonesHelper();
+
+            // 3. Gabungkan kedua daftar dan hapus duplikat
+            const combinedDomains = [...domainsFromJson, ...domainsFromCloudflare];
+            const uniqueDomains = [...new Set(combinedDomains)];
+
+            // 4. Kirim daftar gabungan ke frontend
+            return response.status(200).json(uniqueDomains);
+            
+        } catch (error) {
+            console.error("Error in GET handler:", error);
+            return response.status(500).json({ message: "Gagal memuat daftar domain gabungan." });
+        }
     }
+
     if (request.method === 'POST') {
         const contentType = request.headers['content-type'] || '';
         if (contentType.includes('multipart/form-data')) {
@@ -82,20 +130,6 @@ export default async function handler(request, response) {
         }
     }
     return response.status(405).json({ message: 'Metode tidak diizinkan.' });
-}
-
-// --- Logika GET ---
-async function handleGetDomains(req, res) {
-    try {
-        const domainsData = JSON.parse(fs.readFileSync(path.resolve('./data/domains.json'), 'utf-8'));
-        return res.status(200).json(Object.keys(domainsData));
-    } catch (error) {
-        console.error("Error loading domains:", error);
-        if (error.code === 'ENOENT') {
-             return res.status(500).json({ message: "File konfigurasi domain tidak ditemukan." });
-        }
-        return res.status(500).json({ message: "Gagal memuat daftar domain." });
-    }
 }
 
 // --- Logika POST untuk Admin & Publik ---
@@ -160,69 +194,11 @@ async function handleJsonActions(req, res) {
             case "listProjects": { const { data: githubRepos } = await octokit.repos.listForAuthenticatedUser({ sort: 'created', direction: 'desc' }); const vercelRes = await fetch(`${VERCEL_API_BASE}/v9/projects${TEAM_QUERY}`, { headers: VERCEL_HEADERS }); if (!vercelRes.ok) throw new Error("Gagal mengambil data dari Vercel."); const { projects: vercelProjects = [] } = await vercelRes.json(); const allProjects = {}; githubRepos.forEach(repo => { allProjects[repo.name] = { name: repo.name, githubUrl: repo.html_url, isPrivate: repo.private, hasGithub: true, hasVercel: false }; }); vercelProjects.forEach(proj => { if (allProjects[proj.name]) { allProjects[proj.name].hasVercel = true; } else { allProjects[proj.name] = { name: proj.name, githubUrl: null, isPrivate: null, hasGithub: false, hasVercel: true }; } }); return res.status(200).json(Object.values(allProjects)); }
             case "deleteRepo": { const { repoName } = data; if (!repoName) return res.status(400).json({ message: "Nama repo diperlukan." }); await octokit.repos.delete({ owner: REPO_OWNER, repo: repoName }); return res.status(200).json({ message: `Repositori '${repoName}' berhasil dihapus.` }); }
             case "deleteVercelProject": { const { projectName } = data; if (!projectName) return res.status(400).json({ message: "Nama proyek diperlukan." }); const deleteRes = await fetch(`${VERCEL_API_BASE}/v9/projects/${projectName}${TEAM_QUERY}`, { method: 'DELETE', headers: VERCEL_HEADERS }); if (!deleteRes.ok) { const error = await deleteRes.json(); throw new Error(`Gagal menghapus proyek Vercel: ${error.error.message}`); } return res.status(200).json({ message: `Proyek Vercel '${projectName}' berhasil dihapus.` }); }
-            case "listAllCloudflareZones": { let allZones = []; let page = 1; let totalPages; do { const response = await fetch(`https://api.cloudflare.com/client/v4/zones?page=${page}&per_page=50`, { headers: CF_HEADERS }); const result = await response.json(); if (!result.success) throw new Error("Gagal mengambil daftar zona dari Cloudflare."); allZones = allZones.concat(result.result); totalPages = result.result_info.total_pages; page++; } while (page <= totalPages); return res.status(200).json(allZones); }
+            case "listAllCloudflareZones": { const zones = await listAllCloudflareZonesHelper(); const fullZoneDetails = await Promise.all(zones.map(name => fetch(`https://api.cloudflare.com/client/v4/zones?name=${name}`, { headers: CF_HEADERS }).then(res => res.json()))); const finalZones = fullZoneDetails.map(z => z.result[0]).filter(Boolean); return res.status(200).json(finalZones); }
             case "addCloudflareZone": { const { domainName } = data; if (!domainName) throw new Error("Nama domain diperlukan."); const zonesResponse = await fetch(`https://api.cloudflare.com/client/v4/zones?per_page=1`, { headers: CF_HEADERS }); const zonesResult = await zonesResponse.json(); if (!zonesResult.success) throw new Error(zonesResult.errors[0]?.message || "Gagal memverifikasi akun Cloudflare."); if (zonesResult.result.length === 0 && !process.env.CLOUDFLARE_ACCOUNT_ID) { throw new Error("Tidak dapat menemukan Account ID Cloudflare. Harap tambahkan di .env atau pastikan ada minimal 1 domain di akun Anda."); } const accountId = process.env.CLOUDFLARE_ACCOUNT_ID || zonesResult.result[0].account.id; const createResponse = await fetch(`https://api.cloudflare.com/client/v4/zones`, { method: 'POST', headers: CF_HEADERS, body: JSON.stringify({ name: domainName, account: { id: accountId } }) }); const createResult = await createResponse.json(); if (!createResult.success) throw new Error(createResult.errors[0]?.message || "Gagal menambahkan domain ke Cloudflare."); return res.status(200).json({ message: `Domain ${domainName} berhasil ditambahkan.`, nameservers: createResult.result.name_servers, domain: createResult.result.name }); }
             case "listDnsRecords": { const { zoneId } = data; if (!zoneId) throw new Error("Zone ID diperlukan."); let allRecords = []; let page = 1; let totalPages; do { const response = await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records?page=${page}&per_page=100`, { headers: CF_HEADERS }); const result = await response.json(); if (!result.success) throw new Error("Gagal mengambil data DNS dari Cloudflare."); allRecords = allRecords.concat(result.result); totalPages = result.result_info.total_pages; page++; } while (page <= totalPages); return res.status(200).json(allRecords); }
             case "bulkDeleteDnsRecords": { const { zoneId, recordIds } = data; if (!zoneId || !recordIds || recordIds.length === 0) throw new Error("Data tidak lengkap untuk hapus DNS."); const results = await Promise.all(recordIds.map(recordId => fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records/${recordId}`, { method: 'DELETE', headers: CF_HEADERS }))); const successCount = results.filter(r => r.ok).length; return res.status(200).json({ message: `${successCount} dari ${recordIds.length} record DNS berhasil dihapus.` }); }
             case "bulkDeleteCloudflareZones": { const { zoneIds } = data; if (!zoneIds || zoneIds.length === 0) throw new Error("Tidak ada zona yang dipilih untuk dihapus."); const results = await Promise.all(zoneIds.map(zoneId => fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}`, { method: 'DELETE', headers: CF_HEADERS }))); const successCount = results.filter(r => r.ok).length; return res.status(200).json({ message: `${successCount} dari ${zoneIds.length} zona berhasil dihapus.` }); }
-            case "createTokenForExistingZone": {
-                const { zoneId, zoneName } = data;
-                if (!zoneId || !zoneName) throw new Error("Zone ID dan Zone Name diperlukan.");
-
-                console.log(`Membuat API Token untuk zona ${zoneName} (ID: ${zoneId})...`);
-                
-                const tokenPayload = {
-                    name: `Token-${zoneName}-${Date.now()}`,
-                    policies: [{
-                        effect: "allow",
-                        resources: {
-                            [`com.cloudflare.api.account.zone.${zoneId}`]: "*"
-                        },
-                        permission_groups: [
-                            { id: "c8fed203ed304381815555878484a012" }, // Zone Settings: Read
-                            { id: "82f43d2205724584b4239869a8f16149" }, // Zone: Read
-                            { id: "e583c24208a04a4387f573752e046e7f" }, // DNS: Read
-                            { id: "557345e6402443699f666f4619d0847f" }  // DNS: Write
-                        ]
-                    }],
-                    condition: {}
-                };
-
-                const createTokenResponse = await fetch(`https://api.cloudflare.com/client/v4/user/api_tokens`, {
-                    method: 'POST', headers: CF_HEADERS,
-                    body: JSON.stringify(tokenPayload)
-                });
-                const createTokenResult = await createTokenResponse.json();
-
-                if (!createTokenResult.success) {
-                    console.error("Gagal membuat API Token:", createTokenResult.errors);
-                    throw new Error(createTokenResult.errors[0]?.message || "Gagal membuat API Token khusus.");
-                }
-                const apiToken = createTokenResult.result.value;
-                console.log(`API Token untuk ${zoneName} berhasil dibuat.`);
-
-                const domainsFilePath = path.resolve('./data/domains.json');
-                let domainsData = {};
-                try {
-                    domainsData = JSON.parse(fs.readFileSync(domainsFilePath, 'utf-8'));
-                } catch (e) {
-                    console.warn("File domains.json tidak ditemukan atau kosong, akan membuat baru.");
-                }
-                
-                domainsData[zoneName] = {
-                    zone: zoneId,
-                    apitoken: apiToken
-                };
-                
-                fs.writeFileSync(domainsFilePath, JSON.stringify(domainsData, null, 2));
-                console.log(`Data untuk ${zoneName} berhasil disimpan ke domains.json`);
-
-                return res.status(200).json({
-                    message: `API Token untuk ${zoneName} berhasil dibuat dan disimpan!`,
-                    zoneName: zoneName,
-                    apiToken: apiToken
-                });
-            }
             default:
                 return res.status(400).json({ message: "Aksi tidak dikenal." });
         }
@@ -340,53 +316,54 @@ async function handleCreateWebsite(request, response) {
             method: "POST", headers: VERCEL_HEADERS, body: JSON.stringify({ name: finalDomain })
         });
         const addDomainResult = await addDomainRes.json();
-
-        const allDomains = JSON.parse(fs.readFileSync(path.resolve('./data/domains.json'), 'utf-8'));
+        
+        const allDomains = readDomainsJson();
         const domainInfo = allDomains[rootDomain];
-        if (!domainInfo) throw new Error("Konfigurasi untuk domain utama tidak ditemukan.");
-        const cfAuthHeader = { "Authorization": `Bearer ${domainInfo.apitoken}` };
+        
+        let cfAuthHeaderForDns;
 
-        // [PERBAIKAN TOTAL] Logika baru untuk menangani verifikasi dan pembuatan record DNS
-        // 1. Hapus record lama yang mungkin konflik
-        const existingRecordsRes = await fetch(`https://api.cloudflare.com/client/v4/zones/${domainInfo.zone}/dns_records?name=${finalDomain}`, { headers: cfAuthHeader });
+        if (domainInfo && domainInfo.apitoken) {
+            // Jika domain ada di JSON, gunakan token spesifiknya
+            cfAuthHeaderForDns = { "Authorization": `Bearer ${domainInfo.apitoken}`, "Content-Type": "application/json" };
+        } else {
+            // Jika tidak, gunakan Global API Key sebagai fallback
+            cfAuthHeaderForDns = CF_HEADERS;
+        }
+        
+        const zoneRes = await fetch(`https://api.cloudflare.com/client/v4/zones?name=${rootDomain}`, { headers: CF_HEADERS });
+        const zoneData = await zoneRes.json();
+        if (!zoneData.success || zoneData.result.length === 0) {
+            throw new Error(`Tidak dapat menemukan Zone ID untuk domain ${rootDomain}. Pastikan domain ada di akun Cloudflare.`);
+        }
+        const zoneId = zoneData.result[0].id;
+
+
+        const existingRecordsRes = await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records?name=${finalDomain}`, { headers: cfAuthHeaderForDns });
         const existingRecords = await existingRecordsRes.json();
         if (existingRecords.success && existingRecords.result.length > 0) {
-            console.log(`Menemukan ${existingRecords.result.length} record DNS lama untuk ${finalDomain}, akan dihapus...`);
             for (const record of existingRecords.result) {
-                await fetch(`https://api.cloudflare.com/client/v4/zones/${domainInfo.zone}/dns_records/${record.id}`, { method: 'DELETE', headers: cfAuthHeader });
+                await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records/${record.id}`, { method: 'DELETE', headers: cfAuthHeaderForDns });
             }
         }
 
-        // 2. Lakukan verifikasi jika diperlukan
         if (addDomainResult.error?.code === 'domain_requires_verification') {
-            console.log(`Domain ${finalDomain} memerlukan verifikasi, memulai otomatisasi...`);
             const verificationData = addDomainResult.error.verification[0];
-            const txtName = verificationData.domain.replace(`.${domainInfo.name}`, '');
+            const txtName = verificationData.domain.replace(`.${rootDomain}`, '');
             const txtValue = verificationData.value;
             
-            await fetch(`https://api.cloudflare.com/client/v4/zones/${domainInfo.zone}/dns_records`, {
-                method: "POST", headers: { ...cfAuthHeader, "Content-Type": "application/json" },
+            await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records`, {
+                method: "POST", headers: cfAuthHeaderForDns,
                 body: JSON.stringify({ type: 'TXT', name: txtName, content: txtValue, ttl: 1 })
             });
-            console.log(`Record TXT verifikasi dibuat. Memberi jeda 20 detik...`);
-            await new Promise(resolve => setTimeout(resolve, 20000)); // Jeda 20 detik
+            await new Promise(resolve => setTimeout(resolve, 20000));
 
-            const verifyRes = await fetch(`${VERCEL_API_BASE}/v9/projects/${repoName}/domains/${finalDomain}/verify${TEAM_QUERY}`, { method: "POST", headers: VERCEL_HEADERS });
-            const verifyResult = await verifyRes.json();
-            if (verifyResult.verified) {
-                console.log(`Domain ${finalDomain} berhasil diverifikasi secara otomatis.`);
-            } else {
-                console.warn(`Verifikasi otomatis belum berhasil, mungkin butuh waktu lebih lama.`);
-            }
+            await fetch(`${VERCEL_API_BASE}/v9/projects/${repoName}/domains/${finalDomain}/verify${TEAM_QUERY}`, { method: "POST", headers: VERCEL_HEADERS });
         }
 
-        // 3. Buat record A yang baru
-        console.log(`Membuat record A untuk ${finalDomain}...`);
-        await fetch(`https://api.cloudflare.com/client/v4/zones/${domainInfo.zone}/dns_records`, {
-            method: "POST", headers: { ...cfAuthHeader, "Content-Type": "application/json" },
+        await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records`, {
+            method: "POST", headers: cfAuthHeaderForDns,
             body: JSON.stringify({ type: 'A', name: subdomain, content: VERCEL_A_RECORD, proxied: false, ttl: 1 })
         });
-        console.log(`Record A berhasil dibuat.`);
         
         const vercelUrl = vercelProject.alias?.find(a => a.domain.endsWith('.vercel.app'))?.domain || `${repoName}.vercel.app`;
 
