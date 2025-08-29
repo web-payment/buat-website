@@ -1,7 +1,7 @@
 {
   "whatsappNumber": "",
   "normalPrice": 5000,
-  "discountPrice": 2500,
+  "discountPrice": null,
   "discountEndDate": "2025-08-29T06:59:00.000Z",
   "pricingTiers": [
     {
