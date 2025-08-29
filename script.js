@@ -1,5 +1,5 @@
 document.addEventListener('DOMContentLoaded', () => {
-    // === Elemen UI (Lama & Baru) ===
+    // === Elemen UI ===
     const creatorForm = document.getElementById('creator-form');
     const subdomainInput = document.getElementById('subdomain-name');
     const rootDomainSelect = document.getElementById('root-domain-select');
@@ -21,16 +21,15 @@ document.addEventListener('DOMContentLoaded', () => {
     const confirmationModal = document.getElementById('confirmation-modal');
     const confirmBtnYes = document.getElementById('confirm-btn-yes');
     const confirmBtnNo = document.getElementById('confirm-btn-no');
-    // Elemen Baru
     const showGuideLink = document.getElementById('show-guide-link');
     const guideModal = document.getElementById('guide-modal');
     const guideCloseBtn = document.getElementById('guide-close-btn');
-    const discountBanner = document.getElementById('discount-banner');
-    const countdownTimer = document.getElementById('countdown-timer');
-    const normalPriceDisplay = document.getElementById('normal-price-display');
-    const finalPriceDisplay = document.getElementById('final-price-display');
-    const buyButton = document.getElementById('buy-button');
-
+    const showPricingBtn = document.getElementById('show-pricing-btn');
+    const pricingModal = document.getElementById('pricing-modal');
+    const pricingModalCloseBtn = document.getElementById('pricing-modal-close-btn');
+    const pricingModalList = document.getElementById('pricing-modal-list');
+    const modalDiscountBanner = document.getElementById('modal-discount-banner');
+    const modalCountdownTimer = document.getElementById('modal-countdown-timer');
 
     // === Variabel & State ===
     let toastTimeout;
@@ -53,7 +52,7 @@ document.addEventListener('DOMContentLoaded', () => {
         themeToggle.innerHTML = theme === 'dark' ? '<i class="fas fa-sun"></i>' : '<i class="fas fa-moon"></i>';
     };
 
-    // === Manajemen Data (Lengkap) ===
+    // === Manajemen Data ===
     const getSites = () => JSON.parse(localStorage.getItem('createdSites_v1')) || [];
     const saveSite = (siteData) => {
         const sites = getSites();
@@ -76,7 +75,7 @@ document.addEventListener('DOMContentLoaded', () => {
         return sites[siteIndex];
     };
 
-    // === Fungsi Render Tampilan (Lengkap) ===
+    // === Fungsi Render Tampilan ===
     const renderSitesList = () => {
         const sites = getSites();
         sitesContainer.style.display = sites.length > 0 ? 'block' : 'none';
@@ -137,7 +136,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     const updateModalStatus = (status) => {
         modalCheckStatusBtn.disabled = false;
-        modalCheckStatusBtn.innerHTML = '<i class="fas fa-sync-alt"></i> <span id="modal-status-text">Cek Status</span>';
+        modalCheckStatusBtn.innerHTML = '<i class="fas fa-sync-alt"></i> <span>Cek Status</span>';
         if (status === 'success') {
             modalCheckStatusBtn.className = 'button-primary status success';
             modalCheckStatusBtn.textContent = 'Aktif';
@@ -179,24 +178,49 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
     
-    // === Fitur Harga & Diskon ===
     const updatePricingUI = () => {
-        const normalPrice = settings.normalPrice || 0;
-        const discountPrice = settings.discountPrice || 0;
+        const plans = settings.pricingPlans || [];
         const discountEndDate = settings.discountEndDate ? new Date(settings.discountEndDate) : null;
         const now = new Date();
         const isDiscountActive = discountEndDate && discountEndDate > now;
 
+        pricingModalList.innerHTML = ''; 
+
+        if (plans.length === 0) {
+            pricingModalList.innerHTML = '<p style="text-align:center; color: var(--text-muted);">Admin belum menambahkan paket harga.</p>';
+        }
+
+        plans.forEach(plan => {
+            const normalPrice = plan.normalPrice || 0;
+            const discountPrice = plan.discountPrice || 0;
+            
+            let priceHTML = `<div class="final-price">Rp ${normalPrice.toLocaleString('id-ID')}</div>`;
+            if (isDiscountActive && discountPrice > 0) {
+                priceHTML = `
+                    <div class="normal-price">Rp ${normalPrice.toLocaleString('id-ID')}</div>
+                    <div class="final-price">Rp ${discountPrice.toLocaleString('id-ID')}</div>
+                `;
+            }
+
+            const planEl = document.createElement('div');
+            planEl.className = 'pricing-plan';
+            planEl.innerHTML = `
+                <h4>${plan.name}</h4>
+                <p>${plan.description || ''}</p>
+                <div class="price-tag">${priceHTML}</div>
+                <button class="button-primary buy-plan-btn" data-plan-name="${plan.name}">
+                    <i class="fab fa-whatsapp"></i> Beli Paket Ini
+                </button>
+            `;
+            pricingModalList.appendChild(planEl);
+        });
+
         if (isDiscountActive) {
-            discountBanner.style.display = 'block';
-            normalPriceDisplay.textContent = `Rp ${normalPrice.toLocaleString('id-ID')}`;
-            finalPriceDisplay.textContent = `Rp ${discountPrice.toLocaleString('id-ID')}`;
+            modalDiscountBanner.style.display = 'block';
             startCountdown(discountEndDate);
         } else {
-            discountBanner.style.display = 'none';
-            normalPriceDisplay.textContent = '';
-            finalPriceDisplay.textContent = `Rp ${normalPrice.toLocaleString('id-ID')}`;
-            if(countdownInterval) clearInterval(countdownInterval);
+            modalDiscountBanner.style.display = 'none';
+            if (countdownInterval) clearInterval(countdownInterval);
         }
     };
     
@@ -216,13 +240,13 @@ document.addEventListener('DOMContentLoaded', () => {
             const seconds = Math.floor((distance % (1000 * 60)) / 1000);
             
             const pad = (n) => n < 10 ? '0' + n : n;
-            countdownTimer.textContent = `${pad(days)}:${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
+            modalCountdownTimer.textContent = `${pad(days)}:${pad(hours)}:${pad(minutes)}:${pad(seconds)}`;
         };
         update();
         countdownInterval = setInterval(update, 1000);
     };
 
-    // === Event Listeners (Lengkap) ===
+    // === Event Listeners ===
     themeToggle.addEventListener('click', () => {
         const newTheme = body.classList.contains('dark-mode') ? 'light' : 'dark';
         localStorage.setItem('theme_preference_v1', newTheme);
@@ -239,13 +263,31 @@ document.addEventListener('DOMContentLoaded', () => {
         fileNameSpan.textContent = websiteFileInput.files.length > 0 ? websiteFileInput.files[0].name : 'Pilih file...';
     });
     
-    buyButton.addEventListener('click', () => {
-        const waNumber = settings.whatsappNumber;
-        if (!waNumber) {
-            return showToast('Nomor WhatsApp admin belum diatur.', 'error');
+    showPricingBtn.addEventListener('click', () => {
+        pricingModal.classList.add('show');
+    });
+
+    pricingModalCloseBtn.addEventListener('click', () => {
+        pricingModal.classList.remove('show');
+    });
+
+    pricingModal.addEventListener('click', (e) => {
+        if (e.target === pricingModal) {
+            pricingModal.classList.remove('show');
         }
-        const message = encodeURIComponent('Halo, saya tertarik untuk membeli API Key Permanen.');
-        window.open(`https://wa.me/${waNumber}?text=${message}`, '_blank');
+    });
+
+    pricingModalList.addEventListener('click', (e) => {
+        const buyButton = e.target.closest('.buy-plan-btn');
+        if (buyButton) {
+            const planName = buyButton.dataset.planName;
+            const waNumber = settings.whatsappNumber;
+            if (!waNumber) {
+                return showToast('Nomor WhatsApp admin belum diatur.', 'error');
+            }
+            const message = encodeURIComponent(`Halo, saya tertarik untuk membeli paket API Key: "${planName}".`);
+            window.open(`https://wa.me/${waNumber}?text=${message}`, '_blank');
+        }
     });
 
     showGuideLink.addEventListener('click', (e) => {

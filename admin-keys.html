@@ -9,7 +9,6 @@
     <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
-        /* PERUBAHAN TOTAL: CSS baru untuk tampilan admin modern */
         :root {
             --bg-color: #f0f2f5; --card-bg: #ffffff; --border-color: #e0e0e0;
             --primary-color: #007aff; --text-color: #1d1d1f; --text-muted: #6e6e73;
@@ -23,11 +22,21 @@
             --shadow: 0 4px 15px rgba(0,0,0,0.25); --active-color: #0A84FF;
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
+        html, body {
+            height: 100%;
+        }
         body {
             font-family: 'Poppins', sans-serif; background-color: var(--bg-color); color: var(--text-color);
-            display: flex; justify-content: center; align-items: flex-start;
-            min-height: 100vh; padding: 20px; transition: background-color 0.3s, color 0.3s;
+            display: flex; justify-content: center; 
+            padding: 20px; transition: background-color 0.3s, color 0.3s;
         }
+        body.login-view {
+            align-items: center;
+        }
+        body.admin-view {
+            align-items: flex-start;
+        }
+
         .main-container { width: 100%; max-width: 900px; }
         .admin-header {
             display: flex; justify-content: space-between; align-items: center;
@@ -41,7 +50,6 @@
             width: 40px; height: 40px; background-color: var(--bg-color); border: 1px solid var(--border-color);
             border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 1.1em; cursor: pointer;
         }
-        #logout-btn { background: none; border: none; color: var(--error-color); font-size: 1.4em; cursor: pointer; padding: 5px; }
         
         .admin-content-wrapper {
             display: flex; flex-direction: column; background: var(--card-bg);
@@ -75,9 +83,9 @@
         button:disabled { opacity: 0.6; cursor: not-allowed; }
         button.full-width { width: 100%; font-size: 1.1em; padding: 14px; font-weight: 600; }
         
-        #login-screen {
+        .login-card {
             width: 100%; max-width: 400px; background: var(--card-bg); border: 1px solid var(--border-color);
-            border-radius: 20px; padding: 30px; box-shadow: var(--shadow); margin: 50px auto 0;
+            border-radius: 20px; padding: 30px; box-shadow: var(--shadow);
         }
         h2.section-title { font-weight: 600; margin-bottom: 25px; border-bottom: 1px solid var(--border-color); padding-bottom: 10px; }
         
@@ -87,7 +95,6 @@
         .key-info .key-expiry { font-size: 0.8em; color: var(--text-muted); }
         .delete-btn { background-color: var(--error-color); color: white; border: none; padding: 8px 12px; border-radius: 6px; cursor: pointer; }
         
-        /* Modal Styles (Unified) */
         .modal-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.6); z-index: 9998; display: none; justify-content: center; align-items: center; backdrop-filter: blur(5px); }
         .modal-content { background: var(--card-bg); padding: 0; border-radius: 20px; width: 90%; max-width: 700px; position: relative; max-height: 85vh; display: flex; flex-direction: column; box-shadow: var(--shadow); overflow: hidden; }
         .modal-header { padding: 20px 25px; border-bottom: 1px solid var(--border-color); flex-shrink: 0; }
@@ -104,7 +111,6 @@
         .list-toolbar { display: flex; align-items: center; gap: 10px; padding-bottom: 15px; margin-bottom: 15px; border-bottom: 1px solid var(--border-color); flex-shrink: 0; flex-wrap: wrap; }
         .add-domain-form, .search-form { display: flex; gap: 10px; flex-grow: 1; }
         
-        /* Confirmation & Success Modals */
         .popup-modal .modal-content { max-width: 420px; text-align: center; padding: 0; overflow: hidden; display: block; max-height: none; }
         .popup-modal .popup-header { padding: 25px 20px 10px; }
         .popup-modal .popup-header i { font-size: 2.5em; margin-bottom: 10px; color: var(--success-color); }
@@ -127,9 +133,25 @@
         .notification.success { background-color: var(--success-color); }
         .notification.error { background-color: var(--error-color); }
         @keyframes slideInDown { to { opacity: 1; transform: translateY(0); } }
+
+        .plan-item {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 15px;
+            background: var(--bg-color);
+            border-radius: 8px;
+            margin-bottom: 10px;
+            border: 1px solid var(--border-color);
+        }
+        .plan-info { flex-grow: 1; }
+        .plan-info h4 { margin: 0 0 5px; }
+        .plan-info p { margin: 0; font-size: 0.9em; color: var(--text-muted); }
+        .plan-actions button { font-size: 0.9em; padding: 6px 10px; margin-left: 8px; }
+        .plan-actions .edit-btn { background-color: var(--warn-color); }
     </style>
 </head>
-<body>
+<body class="login-view">
     <div id="loading-overlay" class="loading-overlay"><i class="fas fa-shield-alt loading-logo"></i><p>Memuat Panel Admin...</p></div>
     <div id="notification-container" class="notification-container"></div>
     
@@ -159,16 +181,18 @@
             </nav>
 
             <div id="pengaturan" class="admin-section active">
-                <h2 class="section-title"><i class="fas fa-store"></i> Pengaturan Harga & Kontak</h2>
-                <form id="settings-form">
+                <h2 class="section-title"><i class="fas fa-store"></i> Pengaturan Umum</h2>
+                <form id="general-settings-form">
                     <div class="form-group"><label for="whatsapp-number">Nomor WhatsApp (Format: 628...)</label><input type="text" id="whatsapp-number" placeholder="6281234567890"></div>
-                    <div class="form-group"><label for="normal-price">Harga Normal</label><input type="number" id="normal-price" placeholder="50000"></div>
-                    <div class="form-group"><label for="discount-price">Harga Diskon</label><input type="number" id="discount-price" placeholder="25000"></div>
-                    <div class="form-group"><label for="discount-end-date">Tanggal Berakhir Diskon</label><input type="datetime-local" id="discount-end-date"></div>
-                    <button type="submit" class="full-width">Simpan Pengaturan</button>
+                    <div class="form-group"><label for="discount-end-date">Tanggal Berakhir Diskon (Berlaku untuk semua paket)</label><input type="datetime-local" id="discount-end-date"></div>
+                    <button type="submit" class="full-width">Simpan Pengaturan Umum</button>
                 </form>
-            </div>
 
+                <h2 class="section-title" style="margin-top: 40px;"><i class="fas fa-tags"></i> Kelola Paket Harga</h2>
+                <div id="pricing-plan-list"></div>
+                <button id="add-plan-btn" class="full-width" style="margin-top: 15px; background-color: var(--success-color);"><i class="fas fa-plus"></i> Tambah Paket Baru</button>
+            </div>
+            
             <div id="kelola-produk" class="admin-section">
                 <h2 class="section-title"><i class="fas fa-key"></i> Buat API Key Baru</h2>
                 <form id="create-key-form">
@@ -182,8 +206,8 @@
             </div>
 
             <div id="manajer-domain" class="admin-section">
-                <h2 class="section-title"><i class="fab fa-github"></i> Manajemen Proyek & Domain</h2>
-                <p style="margin-bottom: 20px; color: var(--text-muted);">Kelola repositori GitHub, proyek Vercel, dan domain Cloudflare Anda.</p>
+                <h2 class="section-title"><i class="fas fa-cloud"></i> Manajemen Proyek & Domain</h2>
+                <p style="margin-bottom: 20px; color: var(--text-muted);">Kelola repositori GitHub, proyek Vercel, dan domain Cloudflare Anda melalui modal yang akan muncul.</p>
                 <button id="manage-projects-btn" class="full-width"><i class="fas fa-tasks"></i> Tampilkan & Kelola Proyek</button>
                 <button id="manage-domains-btn" class="full-width" style="margin-top:15px;"><i class="fas fa-network-wired"></i> Kelola Domain & DNS</button>
             </div>
@@ -241,6 +265,35 @@
         </div>
     </div>
     
+    <div id="plan-editor-modal" class="modal-overlay">
+        <div class="modal-content" style="max-width: 500px;">
+            <button class="modal-close">&times;</button>
+            <div class="modal-header"><h2 id="plan-editor-title">Tambah Paket Harga</h2></div>
+            <div class="modal-body">
+                <form id="plan-editor-form">
+                    <input type="hidden" id="plan-id">
+                    <div class="form-group">
+                        <label for="plan-name">Nama Paket</label>
+                        <input type="text" id="plan-name" placeholder="Contoh: API Key Permanen" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="plan-normal-price">Harga Normal</label>
+                        <input type="number" id="plan-normal-price" placeholder="50000" required>
+                    </div>
+                    <div class="form-group">
+                        <label for="plan-discount-price">Harga Diskon (Opsional)</label>
+                        <input type="number" id="plan-discount-price" placeholder="25000">
+                    </div>
+                    <div class="form-group">
+                        <label for="plan-description">Deskripsi Singkat</label>
+                        <input type="text" id="plan-description" placeholder="Contoh: Aktif selamanya">
+                    </div>
+                    <button type="submit" class="full-width">Simpan Paket</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
     <script src="admin-keys.js"></script>
 </body>
 </html>
