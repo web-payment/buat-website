@@ -24,6 +24,10 @@ document.addEventListener('DOMContentLoaded', () => {
     const cloudflareModal = document.getElementById('cloudflare-modal');
     const cloudflareModalTitle = document.getElementById('cloudflare-modal-title');
     const cloudflareModalBody = document.getElementById('cloudflare-modal-body');
+    const cfSuccessModal = document.getElementById('cf-success-modal');
+    const cfSuccessMessage = document.getElementById('cf-success-message');
+    const cfNameserverList = document.getElementById('cf-nameserver-list');
+    const cfSuccessOkBtn = document.getElementById('cf-success-ok-btn');
     
     const settingsForm = document.getElementById('settings-form');
     const waInput = document.getElementById('whatsapp-number');
@@ -76,6 +80,13 @@ document.addEventListener('DOMContentLoaded', () => {
         const notes = "Harap simpan detail kunci ini dengan baik. Informasi ini bersifat rahasia dan tidak akan ditampilkan lagi demi keamanan Anda.";
         apiKeyTextToCopy = `Ini adalah data apikey anda\n-------------------\nApikey: ${newKey.name}\nTanggal buat: ${formatFullDate(newKey.created_at)}\nTanggal kadaluarsa: ${expiryText}\n-------------------\nNotes:\n${notes}`;
         openModal(apiKeySuccessModal);
+    };
+
+    // [DIPERBAIKI] Fungsi untuk menampilkan popup sukses Cloudflare
+    const showCloudflareSuccessPopup = (data) => {
+        cfSuccessMessage.innerHTML = `Domain <strong>${data.domain}</strong> berhasil ditambahkan ke akun Cloudflare Anda.`;
+        cfNameserverList.innerHTML = data.nameservers.map(ns => `<li class="nameserver-item"><span>${ns}</span><button class="copy-ns-btn" data-ns="${ns}">Copy</button></li>`).join('');
+        openModal(cfSuccessModal);
     };
 
     // === Logika API ===
@@ -471,9 +482,10 @@ document.addEventListener('DOMContentLoaded', () => {
             if (!domainName) return showNotification('Nama domain tidak boleh kosong.', 'error');
             button.textContent = 'Menambahkan...'; button.disabled = true;
             try {
-                await callApi('addCloudflareZone', { domainName });
-                showNotification(`Domain ${domainName} berhasil ditambahkan.`, 'success');
-                showCloudflareZonesView();
+                // [DIPERBAIKI] Tangkap hasil dari API call
+                const result = await callApi('addCloudflareZone', { domainName });
+                closeModal(cloudflareModal); // Tutup modal utama
+                showCloudflareSuccessPopup(result); // Tampilkan modal sukses dengan nameserver
             } catch (error) { 
                 showNotification(error.message, 'error');
             } finally {
@@ -492,6 +504,27 @@ document.addEventListener('DOMContentLoaded', () => {
         }
         if (e.target.matches('.manage-dns-btn')) {
             showDnsRecordsView(e.target.dataset.zoneId, e.target.dataset.zoneName);
+        }
+    });
+
+    // [DIPERBAIKI] Tambahkan event listener untuk modal sukses CF
+    cfSuccessOkBtn.addEventListener('click', () => {
+        closeModal(cfSuccessModal);
+        manageDomainsBtn.click(); // Buka kembali modal utama
+        // Trik kecil untuk memastikan view Zona Cloudflare yang aktif
+        setTimeout(() => {
+            const zonesButton = cloudflareModalBody.querySelector('button[data-view="zones"]');
+            if (zonesButton) zonesButton.click();
+        }, 100);
+    });
+
+    cfNameserverList.addEventListener('click', (e) => {
+        if (e.target.classList.contains('copy-ns-btn')) {
+            const ns = e.target.dataset.ns;
+            navigator.clipboard.writeText(ns).then(() => {
+                e.target.textContent = 'Tersalin!';
+                setTimeout(() => { e.target.textContent = 'Copy'; }, 2000);
+            });
         }
     });
 
