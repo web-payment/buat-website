@@ -89,7 +89,6 @@ async function handleGetDomains(req, res) {
 
 // --- Logika POST untuk Admin & Publik ---
 async function handleJsonActions(req, res) {
-    // ... (Kode di bagian ini tidak berubah, sudah lengkap dari sebelumnya)
     try {
         const { action, data, adminPassword } = req.body;
         const SETTINGS_PATH = "data/settings.json";
@@ -155,6 +154,67 @@ async function handleJsonActions(req, res) {
             case "listDnsRecords": { const { zoneId } = data; if (!zoneId) throw new Error("Zone ID diperlukan."); let allRecords = []; let page = 1; let totalPages; do { const response = await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records?page=${page}&per_page=100`, { headers: CF_HEADERS }); const result = await response.json(); if (!result.success) throw new Error("Gagal mengambil data DNS dari Cloudflare."); allRecords = allRecords.concat(result.result); totalPages = result.result_info.total_pages; page++; } while (page <= totalPages); return res.status(200).json(allRecords); }
             case "bulkDeleteDnsRecords": { const { zoneId, recordIds } = data; if (!zoneId || !recordIds || recordIds.length === 0) throw new Error("Data tidak lengkap untuk hapus DNS."); const results = await Promise.all(recordIds.map(recordId => fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records/${recordId}`, { method: 'DELETE', headers: CF_HEADERS }))); const successCount = results.filter(r => r.ok).length; return res.status(200).json({ message: `${successCount} dari ${recordIds.length} record DNS berhasil dihapus.` }); }
             case "bulkDeleteCloudflareZones": { const { zoneIds } = data; if (!zoneIds || zoneIds.length === 0) throw new Error("Tidak ada zona yang dipilih untuk dihapus."); const results = await Promise.all(zoneIds.map(zoneId => fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}`, { method: 'DELETE', headers: CF_HEADERS }))); const successCount = results.filter(r => r.ok).length; return res.status(200).json({ message: `${successCount} dari ${zoneIds.length} zona berhasil dihapus.` }); }
+            
+            // [FITUR BARU DITAMBAHKAN DI SINI]
+            case "createTokenForExistingZone": {
+                const { zoneId, zoneName } = data;
+                if (!zoneId || !zoneName) throw new Error("Zone ID dan Zone Name diperlukan.");
+
+                console.log(`Membuat API Token untuk zona ${zoneName} (ID: ${zoneId})...`);
+                
+                const tokenPayload = {
+                    name: `Token-${zoneName}-${Date.now()}`,
+                    policies: [{
+                        effect: "allow",
+                        resources: {
+                            [`com.cloudflare.api.account.zone.${zoneId}`]: "*"
+                        },
+                        permission_groups: [
+                            { id: "c8fed203ed304381815555878484a012" }, // Zone Settings: Read
+                            { id: "82f43d2205724584b4239869a8f16149" }, // Zone: Read
+                            { id: "e583c24208a04a4387f573752e046e7f" }, // DNS: Read
+                            { id: "557345e6402443699f666f4619d0847f" }  // DNS: Write
+                        ]
+                    }],
+                    condition: {}
+                };
+
+                const createTokenResponse = await fetch(`https://api.cloudflare.com/client/v4/user/api_tokens`, {
+                    method: 'POST', headers: CF_HEADERS,
+                    body: JSON.stringify(tokenPayload)
+                });
+                const createTokenResult = await createTokenResponse.json();
+
+                if (!createTokenResult.success) {
+                    console.error("Gagal membuat API Token:", createTokenResult.errors);
+                    throw new Error(createTokenResult.errors[0]?.message || "Gagal membuat API Token khusus.");
+                }
+                const apiToken = createTokenResult.result.value;
+                console.log(`API Token untuk ${zoneName} berhasil dibuat.`);
+
+                const domainsFilePath = path.resolve('./data/domains.json');
+                let domainsData = {};
+                try {
+                    domainsData = JSON.parse(fs.readFileSync(domainsFilePath, 'utf-8'));
+                } catch (e) {
+                    console.warn("File domains.json tidak ditemukan atau kosong, akan membuat baru.");
+                }
+                
+                domainsData[zoneName] = {
+                    zone: zoneId,
+                    apitoken: apiToken
+                };
+                
+                fs.writeFileSync(domainsFilePath, JSON.stringify(domainsData, null, 2));
+                console.log(`Data untuk ${zoneName} berhasil disimpan ke domains.json`);
+
+                return res.status(200).json({
+                    message: `API Token untuk ${zoneName} berhasil dibuat dan disimpan!`,
+                    zoneName: zoneName,
+                    apiToken: apiToken
+                });
+            }
+
             default:
                 return res.status(400).json({ message: "Aksi tidak dikenal." });
         }
