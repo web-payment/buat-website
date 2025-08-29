@@ -10,82 +10,53 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0-beta3/css/all.min.css">
     <style>
         :root {
-            --bg-color: #f0f2f5; --card-bg: #ffffff; --border-color: #e0e0e0;
+            --bg-color: #f4f4f9; --card-bg: #ffffff; --border-color: #e0e0e0;
             --primary-color: #007aff; --text-color: #1d1d1f; --text-muted: #6e6e73;
             --success-color: #34c759; --error-color: #ff3b30; --pending-color: #ff9500;
-            --shadow: 0 6px 24px rgba(0,0,0,0.07);
         }
         body.dark-mode {
-            --bg-color: #121212; --card-bg: #1c1c1e; --border-color: #3a3a3c;
+            --bg-color: #000000; --card-bg: #1c1c1e; --border-color: #2c2c2e;
             --primary-color: #0A84FF; --text-color: #F5F5F7; --text-muted: #8e8e93;
-            --shadow: 0 6px 24px rgba(0,0,0,0.2);
         }
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: 'Poppins', sans-serif; background-color: var(--bg-color); color: var(--text-color);
-            display: flex; justify-content: center; align-items: flex-start;
-            min-height: 100vh; padding: 20px; transition: background-color 0.3s, color 0.3s;
+            display: flex; justify-content: center; align-items: flex-start; min-height: 100vh;
+            padding: 20px; transition: background-color 0.3s, color 0.3s;
         }
-        .main-container { width: 100%; max-width: 550px; animation: fadeIn 0.5s ease-out; }
-        
-        .main-header {
-            display: flex; justify-content: space-between; align-items: center;
-            padding: 0 10px 20px 10px;
+        .main-container { width: 100%; max-width: 600px; animation: fadeIn 0.5s ease-out; }
+        .creator-card {
+            background: var(--card-bg); border: 1px solid var(--border-color); border-radius: 20px;
+            padding: 30px 35px; box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.1); margin-bottom: 30px;
         }
-        .main-header h1 { font-size: 1.6em; font-weight: 600; display: flex; align-items: center; gap: 10px; }
-        .theme-toggle {
-            width: 40px; height: 40px; background-color: var(--card-bg); border: 1px solid var(--border-color);
-            border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 1.1em; cursor: pointer; box-shadow: var(--shadow);
-        }
-
-        .content-card {
-            background: var(--card-bg); border: 1px solid var(--border-color);
-            border-radius: 16px; padding: 30px; box-shadow: var(--shadow); margin-bottom: 25px;
-        }
-        h2.card-title { font-size: 1.3em; font-weight: 600; margin-bottom: 5px; text-align: center; }
-        p.card-subtitle { color: var(--text-muted); font-size: 0.95em; text-align: center; margin-bottom: 25px; }
-
-        .form-group { margin-bottom: 20px; }
+        h1 { font-size: 2em; font-weight: 700; text-align: center; }
+        h2 { text-align: center; font-weight: 600; margin-bottom: 20px; }
+        p { color: var(--text-muted); font-size: 1em; text-align: center; }
+        .form-group { margin-bottom: 25px; }
         label { display: block; font-weight: 500; font-size: 0.9em; margin-bottom: 8px; }
         input, select {
-            width: 100%; padding: 12px; font-family: inherit; font-size: 1em; background-color: var(--bg-color);
-            border: 1px solid var(--border-color); color: var(--text-color); border-radius: 10px; transition: all 0.2s;
+            width: 100%; padding: 14px; font-family: inherit; font-size: 1em; background-color: var(--bg-color);
+            border: 1px solid var(--border-color); color: var(--text-color); border-radius: 12px; transition: all 0.2s;
         }
         input:focus, select:focus { outline: none; border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(0, 122, 255, 0.2); }
         .subdomain-wrapper { display: flex; align-items: center; }
+        .subdomain-wrapper select { border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: none; width: auto; }
         #subdomain-name { border-top-right-radius: 0; border-bottom-right-radius: 0; }
-        #root-domain-select { border-top-left-radius: 0; border-bottom-left-radius: 0; border-left: none; width: auto; }
-        #file-upload-label { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 14px; text-align: center; cursor: pointer; border: 2px dashed var(--border-color); border-radius: 10px; transition: border-color 0.2s; }
-        #file-upload-label:hover { border-color: var(--primary-color); }
+        #file-upload-label { display: flex; align-items: center; justify-content: center; gap: 10px; padding: 14px; text-align: center; cursor: pointer; border: 2px dashed var(--border-color); border-radius: 12px; }
         #website-file { display: none; }
-        
         button { cursor: pointer; font-family: inherit; }
         .button-primary {
-            width: 100%; padding: 14px; background-color: var(--primary-color); color: white; border: none;
-            border-radius: 10px; font-size: 1.1em; font-weight: 600; 
+            width: 100%; padding: 16px; background-color: var(--primary-color); color: white; border: none;
+            border-radius: 12px; font-size: 1.1em; font-weight: 600; 
             display: flex; justify-content: center; align-items: center; gap: 10px; transition: background-color 0.2s;
         }
         .button-primary:disabled { background-color: var(--text-muted); cursor: not-allowed; }
         .spinner { width: 18px; height: 18px; border: 2px solid rgba(255,255,255,0.3); border-top-color: #fff; border-radius: 50%; animation: spin 1s linear infinite; }
         
-        .discount-banner {
-            background: linear-gradient(45deg, var(--error-color), var(--warn-color));
-            color: white; padding: 15px; border-radius: 12px; text-align: center; margin-bottom: 20px;
-        }
-        .discount-banner h3 { margin: 0; font-size: 1.1em; text-shadow: 1px 1px 3px rgba(0,0,0,0.2); }
-        .discount-banner p { color: white; opacity: 0.9; font-size: 0.9em; margin-top: 4px; text-align: center; }
-        #modal-countdown-timer { font-family: 'Poppins', monospace; font-size: 1.4em; font-weight: 600; letter-spacing: 2px; margin-top: 8px; background: rgba(0,0,0,0.2); padding: 5px 10px; border-radius: 6px; display: inline-block;}
-        .price-tag .normal-price { text-decoration: line-through; color: var(--text-muted); font-size: 1.1em; }
-        .price-tag .final-price { font-size: 2.2em; font-weight: 700; color: var(--primary-color); }
-        
-        .admin-link { display: block; text-align: center; margin-top: 10px; color: var(--text-muted); font-size: 0.9em; text-decoration: none; }
-        
         #created-sites-container { display: none; }
         .sites-list-item { background: var(--bg-color); border-radius: 12px; padding: 15px; margin-bottom: 10px; cursor: pointer; transition: background-color 0.2s, transform 0.2s; display: flex; justify-content: space-between; align-items: center; border: 1px solid var(--border-color); position: relative; }
         .sites-list-item:hover { transform: translateY(-3px); }
         .site-info h3 { margin: 0 0 5px; font-size: 1.1em; color: var(--text-color);}
-        .site-info p { text-align: left; font-size: 0.9em;}
-        .delete-site-btn { position: absolute; top: 5px; right: 5px; background: none; border: none; color: var(--text-muted); cursor: pointer; font-size: 1.2em; width: 25px; height: 25px; display: flex; justify-content: center; align-items: center;}
         .status { padding: 4px 10px; border-radius: 20px; font-size: 0.8em; font-weight: 500; color: white;}
         .status.pending { background-color: var(--pending-color); }
         .status.success { background-color: var(--success-color); }
@@ -95,11 +66,11 @@
         .modal-content { background: var(--card-bg); border-radius: 20px; padding: 25px; width: 90%; max-width: 500px; transform: scale(0.9); transition: transform 0.3s; opacity: 0; }
         .modal-overlay.show .modal-content { transform: scale(1); opacity: 1; }
         .modal-header { text-align: center; border-bottom: 1px solid var(--border-color); padding-bottom: 15px; margin-bottom: 20px; }
-        .modal-header i { font-size: 2.5em; color: var(--primary-color); }
+        .modal-header i { font-size: 2.5em; }
         .modal-body-item { margin-bottom: 15px; }
         .modal-body-item strong { display: block; color: var(--text-muted); font-size: 0.9em; margin-bottom: 5px;}
         .modal-body-item a { color: var(--primary-color); text-decoration: none; word-break: break-all; }
-        
+
         #toast-notification { position: fixed; top: 20px; left: 50%; transform: translate(-50%, -150%); z-index: 9999; background-color: rgba(44, 44, 46, 0.85); color: #fff; padding: 12px 20px; border-radius: 25px; font-size: 0.9em; font-weight: 500; box-shadow: 0 4px 15px rgba(0,0,0,0.2); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); opacity: 0; transition: transform 0.5s cubic-bezier(0.2, 0.8, 0.2, 1), opacity 0.5s ease; display: flex; align-items: center; gap: 10px; pointer-events: none; }
         #toast-notification.show { opacity: 1; transform: translate(-50%, 0); }
         #toast-notification.success { background-color: rgba(50, 215, 75, 0.85); }
@@ -107,30 +78,28 @@
         .loading-overlay { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background-color: var(--bg-color); z-index: 10000; display: flex; justify-content: center; align-items: center; opacity: 1; transition: opacity 0.5s ease; }
         .loading-overlay.hidden { opacity: 0; pointer-events: none; }
         .loading-logo { font-size: 2.5em; color: var(--primary-color); animation: pulse 1.5s infinite; }
+        a.admin-link { display: block; text-align: center; margin-top: 20px; color: var(--text-muted); font-size: 0.9em; text-decoration: none; }
+        .theme-toggle { position: fixed; bottom: 20px; right: 20px; width: 50px; height: 50px; background-color: var(--card-bg); border: 1px solid var(--border-color); border-radius: 50%; display: flex; justify-content: center; align-items: center; font-size: 1.2em; cursor: pointer; box-shadow: 0 4px 12px rgba(0,0,0,0.1); z-index: 1001; }
         
-        .upload-guide-link { text-align: center; margin-top: -10px; margin-bottom: 25px; }
+        .upload-guide-link { text-align: center; margin-top: -15px; margin-bottom: 25px; }
         .upload-guide-link a { color: var(--primary-color); text-decoration: none; font-size: 0.9em; }
-        
+        .pricing-section .creator-card { padding-top: 40px; }
+        .discount-banner { background-color: var(--error-color); color: white; padding: 15px; border-radius: 12px; text-align: center; margin-bottom: 25px; }
+        #countdown-timer { font-size: 1.2em; font-weight: 600; letter-spacing: 2px; }
+        .price-card { background-color: var(--bg-color); border: 1px solid var(--border-color); border-radius: 15px; padding: 25px; text-align: center; }
+        .price-tag { margin: 15px 0; }
+        .price-tag .normal-price { text-decoration: line-through; color: var(--text-muted); font-size: 1.1em; }
+        .price-tag .final-price { font-size: 2.2em; font-weight: 700; color: var(--primary-color); }
+        .guide-content ul { list-style: none; padding-left: 0; }
+        .guide-content li { display: flex; align-items: flex-start; gap: 15px; margin-bottom: 15px; text-align: left;}
+        .guide-content i { color: var(--primary-color); font-size: 1.2em; margin-top: 4px; }
         .confirmation-buttons { display: flex; border-top: 1px solid var(--border-color); margin: 20px -25px -25px; }
         .confirmation-buttons button { flex: 1; padding: 14px; border-radius: 0; background: none; font-size: 1.05em; font-weight: 500; }
         #confirm-btn-no { color: var(--primary-color); border-right: 1px solid var(--border-color); border-bottom-left-radius: 20px; }
         #confirm-btn-yes { color: var(--error-color); font-weight: 600; border-bottom-right-radius: 20px;}
-
-        .pricing-plan {
-            background-color: var(--bg-color);
-            border: 1px solid var(--border-color);
-            border-radius: 12px;
-            padding: 20px;
-            margin-bottom: 15px;
-            text-align: center;
-        }
-        .pricing-plan h4 { font-size: 1.2em; margin-bottom: 8px; }
-        .pricing-plan p { font-size: 0.9em; color: var(--text-muted); min-height: 25px; }
-        .pricing-plan .price-tag { margin: 15px 0; }
-        .pricing-plan .button-primary { margin-top: 15px; background-color: #25D366; }
-
+        
         @keyframes fadeIn { from { opacity: 0; transform: translateY(-10px); } to { opacity: 1; transform: translateY(0); } }
-        @keyframes pulse { 0% {transform: scale(1);} 50% {transform: scale(1.1);} 100% {transform: scale(1);} }
+        @keyframes pulse { to { transform: rotate(360deg); } }
         @keyframes spin { to { transform: rotate(360deg); } }
     </style>
 </head>
@@ -139,14 +108,11 @@
     <div id="toast-notification"></div>
 
     <div class="main-container">
-        <header class="main-header">
-            <h1><i class="fas fa-magic"></i> Website Creator</h1>
-            <div id="theme-toggle" class="theme-toggle"><i class="fas fa-moon"></i></div>
-        </header>
-
-        <div class="content-card">
-            <h2 class="card-title">Buat Website Baru</h2>
-            <p class="card-subtitle">Unggah proyek Anda dan langsung publikasikan.</p>
+        <div class="creator-card">
+            <div style="text-align: center; margin-bottom: 30px;">
+                <h1>Buat Website Baru</h1>
+                <p>Unggah proyek Anda dan langsung publikasikan.</p>
+            </div>
             <form id="creator-form">
                 <div class="form-group"><label for="subdomain-name">Nama Website Anda</label><div class="subdomain-wrapper"><input type="text" id="subdomain-name" placeholder="toko-saya" required><select id="root-domain-select" required><option value="">Memuat...</option></select></div></div>
                 <div class="form-group"><label for="website-file">File Proyek (.zip)</label><label for="website-file" id="file-upload-label"><i class="fas fa-cloud-upload-alt"></i><span id="file-name-span">Pilih file...</span></label><input type="file" id="website-file" accept=".zip,.html" required></div>
@@ -156,35 +122,69 @@
             </form>
         </div>
 
-        <div class="content-card">
-            <h2 class="card-title">Harga API Key</h2>
-            <p class="card-subtitle">Lihat daftar paket API Key yang tersedia.</p>
-            <button id="show-pricing-btn" class="button-primary"><i class="fas fa-tags"></i> Lihat Pilihan Paket</button>
+        <div class="pricing-section">
+            <div class="creator-card">
+                <h2>Belum Punya API Key?</h2>
+                <div id="discount-banner" class="discount-banner" style="display: none;">
+                    <h3>🔥 PROMO TERBATAS! 🔥</h3>
+                    <p>Diskon akan berakhir dalam:</p>
+                    <div id="countdown-timer">00:00:00:00</div>
+                </div>
+                <div class="pricing-grid">
+                    <div class="price-card">
+                        <h3>API Key Permanen</h3>
+                        <div class="price-tag">
+                            <div class="normal-price" id="normal-price-display">Rp 0</div>
+                            <div class="final-price" id="final-price-display">Rp 0</div>
+                        </div>
+                        <button class="button-primary" id="buy-button"><i class="fab fa-whatsapp"></i> Beli via WhatsApp</button>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <div id="created-sites-container" class="content-card">
-            <h2 class="card-title"><i class="fas fa-list"></i> Riwayat Website Anda</h2>
+        <div id="created-sites-container" class="creator-card">
+            <h2><i class="fas fa-list"></i> Riwayat Website Anda</h2>
             <div id="sites-list" style="margin-top: 20px;"></div>
         </div>
         <a href="admin.html" class="admin-link">Masuk Panel Admin</a>
     </div>
     
     <div id="guide-modal" class="modal-overlay">
-        <div class="modal-content"><div class="modal-header"><i class="fas fa-info-circle"></i><h2>Panduan Upload</h2></div><div class="modal-body"><ul><li><i class="fas fa-file-archive"></i><div><strong>Batas Ukuran File: 4.5 MB</strong><p>Pastikan file .zip Anda tidak lebih dari 4.5 MB.</p></div></li><li><i class="fas fa-user-secret"></i><div><strong>Data Sensitif Dilarang</strong><p>Jangan menaruh API Key atau password di dalam file.</p></div></li><li><i class="fas fa-gavel"></i><div><strong>Konten Ilegal Dilarang</strong><p>Dilarang keras mengunggah konten yang melanggar hukum.</p></div></li></ul></div><button id="guide-close-btn" class="button-primary" style="margin: 0 25px 25px;">Saya Mengerti</button></div>
+        <div class="modal-content"><div class="modal-header"><i class="fas fa-info-circle" style="color: var(--primary-color);"></i><h2>Panduan Upload</h2></div><div class="guide-content" style="padding: 0 15px;"><ul><li><i class="fas fa-file-archive"></i><div><strong>Batas Ukuran File: 4.5 MB</strong><p>Pastikan file .zip Anda tidak lebih dari 4.5 MB.</p></div></li><li><i class="fas fa-user-secret"></i><div><strong>Data Sensitif Dilarang</strong><p>Jangan menaruh API Key atau password di dalam file.</p></div></li><li><i class="fas fa-gavel"></i><div><strong>Konten Ilegal Dilarang</strong><p>Dilarang keras mengunggah konten yang melanggar hukum.</p></div></li></ul></div><button id="guide-close-btn" class="button-primary" style="margin-top: 15px;">Saya Mengerti</button></div>
     </div>
-
+    
     <div id="details-modal" class="modal-overlay">
-        <div class="modal-content"><div class="modal-header"><i class="fas fa-link"></i><h2>Detail Website</h2></div><div class="modal-body-item"><strong>URL Kustom Anda:</strong><a href="#" target="_blank" id="modal-custom-url"></a></div><div class="modal-body-item"><strong>URL Vercel:</strong><a href="#" target="_blank" id="modal-vercel-url"></a></div><button id="modal-check-status-btn" class="button-primary status pending">Cek Status</button><button id="modal-close-btn" class="button-primary" style="margin-top: 10px; background-color: var(--text-muted);">Tutup</button></div>
+        <div class="modal-content">
+            <div class="modal-header">
+                <i class="fas fa-link" style="color: var(--primary-color);"></i>
+                <h2>Detail Website</h2>
+            </div>
+            <div class="modal-body-item">
+                <strong>URL Kustom Anda:</strong>
+                <a href="#" target="_blank" id="modal-custom-url"></a>
+            </div>
+            <div class="modal-body-item">
+                <strong>URL Vercel:</strong>
+                <a href="#" target="_blank" id="modal-vercel-url"></a>
+            </div>
+            <button id="modal-check-status-btn" class="button-primary status pending">Cek Status</button>
+            <button id="modal-close-btn" class="button-primary" style="margin-top: 10px; background-color: var(--text-muted);">Tutup</button>
+        </div>
     </div>
 
     <div id="confirmation-modal" class="modal-overlay">
-        <div class="modal-content" style="max-width: 350px;"><h3 id="confirmation-modal-title" style="text-align: center; font-weight: 600; padding: 20px 20px 5px;"></h3><p id="confirmation-modal-message" style="font-size: 0.9em; padding: 0 20px 20px; color: var(--text-muted); text-align: center;"></p><div class="confirmation-buttons"><button id="confirm-btn-no">Batal</button><button id="confirm-btn-yes">Hapus</button></div></div>
-    </div>
-    
-    <div id="pricing-modal" class="modal-overlay">
-        <div class="modal-content"><div class="modal-header"><i class="fas fa-tags"></i><h2>Pilihan Paket API Key</h2></div><div id="pricing-modal-body" style="padding: 15px; max-height: 60vh; overflow-y: auto;"><div id="modal-discount-banner" class="discount-banner" style="display: none; margin: 0 10px 15px;"><h3 style="margin-bottom: 5px;">🔥 PROMO KILAT! 🔥</h3><p>Berakhir dalam:</p><div id="modal-countdown-timer">00:00:00:00</div></div><div id="pricing-modal-list"></div></div><button id="pricing-modal-close-btn" class="button-primary" style="margin: 0 25px 25px; background-color: var(--text-muted);">Tutup</button></div>
+        <div class="modal-content" style="max-width: 350px;">
+             <h3 id="confirmation-modal-title" style="text-align: center; font-weight: 600; padding: 20px 20px 5px;"></h3>
+             <p id="confirmation-modal-message" style="font-size: 0.9em; padding: 0 20px 20px; color: var(--text-muted); text-align: center;"></p>
+             <div class="confirmation-buttons">
+                <button id="confirm-btn-no">Batal</button>
+                <button id="confirm-btn-yes">Hapus</button>
+            </div>
+        </div>
     </div>
 
+    <div id="theme-toggle" class="theme-toggle"><i class="fas fa-moon"></i></div>
     <script src="script.js"></script>
 </body>
 </html>
