@@ -35,12 +35,9 @@ document.addEventListener('DOMContentLoaded', () => {
     const discountPriceInput = document.getElementById('discount-price');
     const discountDateInput = document.getElementById('discount-end-date');
     const logoutBtn = document.getElementById('logout-btn');
-
-    // *** ELEMEN UI BARU UNTUK DOMAIN JSON ***
+    
     const addDomainJsonForm = document.getElementById('add-domain-json-form');
     const domainJsonListContainer = document.getElementById('domain-json-list-container');
-
-
     let apiKeyTextToCopy = '';
 
     // === Fungsi Bantuan & Logika Umum ===
@@ -86,7 +83,7 @@ document.addEventListener('DOMContentLoaded', () => {
         apiKeyTextToCopy = `Ini adalah data apikey anda\n-------------------\nApikey: ${newKey.name}\nTanggal buat: ${formatFullDate(newKey.created_at)}\nTanggal kadaluarsa: ${expiryText}\n-------------------\nNotes:\n${notes}`;
         openModal(apiKeySuccessModal);
     };
-
+    
     // === Logika API ===
     const callApi = async (action, data = {}) => {
         const password = localStorage.getItem('adminPassword'); 
@@ -104,7 +101,10 @@ document.addEventListener('DOMContentLoaded', () => {
     // === Fungsi Render Tampilan ===
     const renderApiKeys = (keys) => {
         keyListContainer.innerHTML = '';
-        if (Object.keys(keys).length === 0) { keyListContainer.innerHTML = '<p>Belum ada API Key yang dibuat.</p>'; return; }
+        if (!keys || Object.keys(keys).length === 0) { 
+            keyListContainer.innerHTML = '<p>Belum ada API Key yang dibuat.</p>'; 
+            return; 
+        }
         for (const key in keys) {
             const keyData = keys[key];
             const expiry = keyData.expires_at === 'permanent' ? 'Permanen' : `Kadaluwarsa: ${formatFullDate(keyData.expires_at)}`;
@@ -127,8 +127,7 @@ document.addEventListener('DOMContentLoaded', () => {
         });
         modalBody.innerHTML = `<ul class="list-item-container">${projectHtml}</ul>`;
     };
-
-    // *** FUNGSI RENDER BARU UNTUK domains.json ***
+    
     const renderJsonDomains = (domains) => {
         domainJsonListContainer.innerHTML = '';
         if (Object.keys(domains).length === 0) {
@@ -139,7 +138,6 @@ document.addEventListener('DOMContentLoaded', () => {
             const domainData = domains[domain];
             const item = document.createElement('div');
             item.className = 'key-item';
-            // Sembunyikan sebagian token untuk keamanan
             const hiddenToken = domainData.apitoken.slice(0, 4) + '...' + domainData.apitoken.slice(-4);
             item.innerHTML = `
                 <div class="key-info" style="flex-grow: 1;">
@@ -153,7 +151,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
 
-    // *** FUNGSI BARU UNTUK MEMUAT DAN MERENDER DOMAIN JSON ***
     const loadAndRenderJsonDomains = async () => {
         domainJsonListContainer.innerHTML = '<p>Memuat domain dari JSON...</p>';
         try {
@@ -165,12 +162,13 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     };
     
-    // === Logika Cloudflare (TETAP SAMA) ===
+    // === Logika Cloudflare ===
     const showCloudflareSuccessPopup = (data) => {
         cfSuccessMessage.innerHTML = `Domain <strong>${data.domain}</strong> berhasil ditambahkan ke akun Cloudflare Anda.`;
         cfNameserverList.innerHTML = data.nameservers.map(ns => `<li class="nameserver-item"><span>${ns}</span><button class="copy-ns-btn" data-ns="${ns}">Copy</button></li>`).join('');
         openModal(cfSuccessModal);
     };
+
     const setupBulkDeleteControls = (container, listType, context) => {
         const selectAllCheckbox = container.querySelector('.select-all-checkbox');
         const checkboxes = container.querySelectorAll('.item-checkbox');
@@ -220,6 +218,7 @@ document.addEventListener('DOMContentLoaded', () => {
             }
         });
     };
+    
     const renderCloudflareZones = (zones) => {
         cloudflareModalTitle.innerHTML = `Manajemen Zona Cloudflare <span class="item-count">${zones.length}</span>`;
         let listHtml = zones.map(zone => `
@@ -294,14 +293,14 @@ document.addEventListener('DOMContentLoaded', () => {
                 discountDateInput.value = date.toISOString().slice(0, 16);
             }
         } catch (error) {
-            showNotification(error.message, 'error');
+            // Jangan tampilkan notifikasi error di sini agar tidak mengganggu jika auto-login gagal
+            console.error("Gagal memuat pengaturan:", error);
         }
     };
     
     const setupNavigation = () => {
         const navButtons = document.querySelectorAll('.admin-nav .nav-btn');
         const pages = document.querySelectorAll('.admin-card .admin-page');
-
         navButtons.forEach(button => {
             button.addEventListener('click', (e) => {
                 e.preventDefault();
@@ -310,8 +309,6 @@ document.addEventListener('DOMContentLoaded', () => {
                 navButtons.forEach(btn => btn.classList.remove('active'));
                 document.getElementById(targetPageId).style.display = 'block';
                 button.classList.add('active');
-
-                // *** BARU: Muat daftar domain saat tab diaktifkan ***
                 if (targetPageId === 'page-domains-json') {
                     loadAndRenderJsonDomains();
                 }
@@ -319,11 +316,29 @@ document.addEventListener('DOMContentLoaded', () => {
         });
     };
     
-    const showAdminPanel = (keys) => {
+    // --- [PERBAIKAN] LOGIKA LOGIN DAN STARTUP ---
+    const showAdminPanelAndLoadData = async () => {
         loginScreen.style.display = 'none';
         adminPanel.style.display = 'block';
-        renderApiKeys(keys);
-        loadSettings(); 
+        
+        // Tampilkan pesan loading di dalam panel
+        keyListContainer.innerHTML = '<p>Memuat kunci API...</p>';
+
+        // Muat data pengaturan dan API keys
+        try {
+            await loadSettings();
+            const keys = await callApi('getApiKeys');
+            renderApiKeys(keys);
+        } catch (error) {
+            showNotification(`Sesi tidak valid atau gagal memuat data. Silakan login kembali.`, 'error');
+            keyListContainer.innerHTML = `<p style="color: var(--error-color);">Gagal memuat kunci.</p>`;
+            localStorage.removeItem('adminPassword');
+            
+            setTimeout(() => {
+                adminPanel.style.display = 'none';
+                loginScreen.style.display = 'block';
+            }, 2500);
+        }
     };
 
     loginBtn.addEventListener('click', async () => {
@@ -332,9 +347,10 @@ document.addEventListener('DOMContentLoaded', () => {
         localStorage.setItem('adminPassword', password); 
         loginBtn.textContent = 'Memverifikasi...'; loginBtn.disabled = true;
         try {
-            const keys = await callApi('getApiKeys');
-            showAdminPanel(keys);
+            // Cukup panggil getSettings untuk verifikasi, lebih ringan dari getApiKeys
+            await callApi('getSettings'); 
             showNotification('Login berhasil!', 'success');
+            await showAdminPanelAndLoadData();
         } catch (error) {
             showNotification(`Login Gagal: ${error.message}`, 'error');
             localStorage.removeItem('adminPassword'); 
@@ -344,26 +360,20 @@ document.addEventListener('DOMContentLoaded', () => {
     });
 
     const tryAutoLogin = async () => {
-        try {
-            if (localStorage.getItem('adminPassword')) {
-                const keys = await callApi('getApiKeys');
-                showAdminPanel(keys);
-            } else {
-                loginScreen.style.display = 'block';
-            }
-        } catch (error) {
-            localStorage.removeItem('adminPassword');
+        if (localStorage.getItem('adminPassword')) {
+            await showAdminPanelAndLoadData();
+        } else {
             loginScreen.style.display = 'block';
-        } finally {
-            loadingOverlay.classList.add('hidden');
         }
+        // Selalu sembunyikan loading overlay setelah pengecekan selesai
+        loadingOverlay.classList.add('hidden');
     };
-
+    
+    // --- EVENT LISTENERS LAINNYA ---
     settingsForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const button = e.target.querySelector('button');
         button.textContent = 'Menyimpan...'; button.disabled = true;
-
         const data = {
             whatsappNumber: waInput.value.trim(),
             normalPrice: parseInt(normalPriceInput.value, 10),
@@ -383,9 +393,7 @@ document.addEventListener('DOMContentLoaded', () => {
     logoutBtn.addEventListener('click', () => {
         localStorage.removeItem('adminPassword');
         showNotification('Anda telah logout.', 'success');
-        setTimeout(() => {
-            window.location.reload();
-        }, 1500);
+        setTimeout(() => window.location.reload(), 1500);
     });
 
     document.getElementById('create-key-form').addEventListener('submit', async (e) => {
@@ -401,8 +409,7 @@ document.addEventListener('DOMContentLoaded', () => {
         try {
             const result = await callApi('createApiKey', data);
             showApiKeySuccessPopup(result.newKey);
-            document.getElementById('new-apikey-name').value = '';
-            document.getElementById('permanent-key').checked = false;
+            e.target.reset();
             document.getElementById('duration-section').style.display = 'block';
         } catch (error) {
             showNotification(`Gagal: ${error.message}`, 'error');
@@ -465,13 +472,7 @@ document.addEventListener('DOMContentLoaded', () => {
             try {
                 const result = await callApi(action, { repoName: repoName, projectName: repoName });
                 showNotification(result.message, 'success');
-                const actionsContainer = targetButton.parentElement;
-                targetButton.remove();
-                if (actionsContainer.children.length === 0) {
-                    const repoItem = actionsContainer.parentElement;
-                    repoItem.style.opacity = '0';
-                    setTimeout(() => repoItem.remove(), 300);
-                }
+                targetButton.closest('.repo-item').style.display = 'none';
             } catch (error) {
                 showNotification(error.message, 'error');
                 targetButton.textContent = originalText; targetButton.disabled = false;
@@ -536,9 +537,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 const result = await callApi('addCloudflareZone', { domainName });
                 closeModal(cloudflareModal);
                 showCloudflareSuccessPopup(result);
-                input.value = '';
-            } catch (error) { showNotification(error.message, 'error');
-            } finally { button.textContent = 'Tambah'; button.disabled = false; }
+            } catch (error) { 
+                showNotification(error.message, 'error');
+            } finally { 
+                button.textContent = 'Tambah'; button.disabled = false; 
+            }
         }
         if (e.target.classList.contains('manage-dns-btn')) {
             showDnsRecordsView(e.target.dataset.zoneId, e.target.dataset.zoneName);
@@ -563,55 +566,40 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // *** EVENT LISTENER BARU UNTUK MENAMBAHKAN DOMAIN KE JSON ***
     addDomainJsonForm.addEventListener('submit', async (e) => {
         e.preventDefault();
         const button = e.target.querySelector('button[type="submit"]');
-        const domainInput = document.getElementById('json-domain-name');
-        const zoneInput = document.getElementById('json-zone-id');
-        const tokenInput = document.getElementById('json-api-token');
-
         const data = {
-            domainName: domainInput.value.trim(),
-            zoneId: zoneInput.value.trim(),
-            apiToken: tokenInput.value.trim()
+            domainName: document.getElementById('json-domain-name').value.trim(),
+            zoneId: document.getElementById('json-zone-id').value.trim(),
+            apiToken: document.getElementById('json-api-token').value.trim()
         };
-
         if (!data.domainName || !data.zoneId || !data.apiToken) {
             return showNotification('Semua field harus diisi.', 'error');
         }
-
-        button.textContent = 'Menambahkan...';
-        button.disabled = true;
-
+        button.textContent = 'Menambahkan...'; button.disabled = true;
         try {
             const result = await callApi('addDomainToJson', data);
             showNotification(result.message, 'success');
-            addDomainJsonForm.reset(); // Bersihkan form
-            await loadAndRenderJsonDomains(); // Muat ulang list
+            addDomainJsonForm.reset();
+            await loadAndRenderJsonDomains();
         } catch (error) {
             showNotification(error.message, 'error');
         } finally {
-            button.textContent = 'Tambah Domain ke JSON';
-            button.disabled = false;
+            button.textContent = 'Tambah Domain ke JSON'; button.disabled = false;
         }
     });
 
-    // *** EVENT LISTENER BARU UNTUK MENGHAPUS DOMAIN DARI JSON ***
     domainJsonListContainer.addEventListener('click', async (e) => {
         const button = e.target.closest('.delete-btn');
         if (button) {
             const domainName = button.dataset.domain;
-            const confirmed = await showConfirmation(
-                'Hapus Domain dari JSON?',
-                `Anda yakin ingin menghapus '${domainName}' dari file domains.json? Tindakan ini tidak dapat diurungkan.`
-            );
-
+            const confirmed = await showConfirmation('Hapus Domain dari JSON?', `Anda yakin ingin menghapus '${domainName}' dari file domains.json?`);
             if (confirmed) {
                 try {
                     const result = await callApi('deleteDomainFromJson', { domainName });
                     showNotification(result.message, 'success');
-                    await loadAndRenderJsonDomains(); // Muat ulang list
+                    await loadAndRenderJsonDomains();
                 } catch (error) {
                     showNotification(`Gagal menghapus: ${error.message}`, 'error');
                 }
@@ -625,9 +613,9 @@ document.addEventListener('DOMContentLoaded', () => {
 
     // === Inisialisasi Aplikasi ===
     const init = () => {
-        // Logika tema (jika ada) bisa ditaruh di sini
         setupNavigation();
-        setTimeout(tryAutoLogin, 700);
+        // [PERBAIKAN] Panggil langsung tanpa timeout agar lebih cepat
+        tryAutoLogin(); 
     };
     
     init();
