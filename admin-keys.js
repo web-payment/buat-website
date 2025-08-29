@@ -124,7 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
             const githubButton = proj.hasGithub ? `<button class="delete-btn delete-repo-btn" data-name="${proj.name}">Hapus Repo</button>` : '';
             const vercelButton = proj.hasVercel ? `<button class="delete-btn delete-vercel-btn" data-name="${proj.name}">Hapus Vercel</button>` : '';
             const repoInfo = proj.hasGithub ? `<a href="${proj.githubUrl}" target="_blank">${proj.name}</a><span>${proj.isPrivate ? 'Private' : 'Public'}</span>` : `<strong>${proj.name}</strong><span>(Hanya ada di Vercel)</span>`;
-            projectHtml += `<div class="repo-item"><div class="item-info">${repoInfo}</div><div class="repo-actions">${githubButton}${vercelButton}</div></div>`;
+            projectHtml += `<div class="repo-item" data-name="${proj.name}"><div class="item-info">${repoInfo}</div><div class="repo-actions">${githubButton}${vercelButton}</div></div>`;
         });
         modalBody.innerHTML = `<ul class="list-item-container">${projectHtml}</ul>`;
     };
@@ -148,7 +148,7 @@ document.addEventListener('DOMContentLoaded', () => {
         checkboxes.forEach(cb => cb.addEventListener('change', () => {
             if(selectAllCheckbox) selectAllCheckbox.checked = [...checkboxes].every(c => c.checked);
             updateButtonVisibility();
-        });
+        }));
         if(bulkDeleteBtn) bulkDeleteBtn.addEventListener('click', async () => {
             const selectedItems = [...checkboxes].filter(cb => cb.checked);
             const selectedIds = selectedItems.map(cb => cb.value);
@@ -300,6 +300,23 @@ document.addEventListener('DOMContentLoaded', () => {
         loadSettings(); 
     };
 
+    const tryAutoLogin = async () => {
+        try {
+            if (localStorage.getItem('adminPassword')) {
+                const keys = await callApi('getApiKeys');
+                showAdminPanel(keys);
+            } else {
+                loginScreen.style.display = 'block';
+            }
+        } catch (error) {
+            localStorage.removeItem('adminPassword');
+            loginScreen.style.display = 'block';
+        } finally {
+            loadingOverlay.classList.add('hidden');
+        }
+    };
+
+    // === Event Listeners ===
     loginBtn.addEventListener('click', async () => {
         const password = passwordInput.value;
         if (!password) return showNotification('Password tidak boleh kosong.', 'error');
@@ -316,22 +333,6 @@ document.addEventListener('DOMContentLoaded', () => {
             loginBtn.textContent = 'Masuk'; loginBtn.disabled = false;
         }
     });
-
-    const tryAutoLogin = async () => {
-        try {
-            if (localStorage.getItem('adminPassword')) {
-                const keys = await callApi('getApiKeys');
-                showAdminPanel(keys);
-            } else {
-                loginScreen.style.display = 'block';
-            }
-        } catch (error) {
-            localStorage.removeItem('adminPassword');
-            loginScreen.style.display = 'block';
-        } finally {
-            loadingOverlay.classList.add('hidden');
-        }
-    };
 
     settingsForm.addEventListener('submit', async (e) => {
         e.preventDefault();
@@ -410,7 +411,6 @@ document.addEventListener('DOMContentLoaded', () => {
         }
     });
 
-    // [DIPERBAIKI] Logika penghapusan proyek
     modalBody.addEventListener('click', async (e) => {
         const targetButton = e.target.closest('button.delete-btn');
         if (!targetButton) return;
@@ -443,19 +443,13 @@ document.addEventListener('DOMContentLoaded', () => {
                 const actionsContainer = targetButton.parentElement;
                 const repoItem = targetButton.closest('.repo-item');
                 const repoInfo = repoItem.querySelector('.item-info');
-
-                // Hapus tombol yang diklik
+                
                 targetButton.remove();
 
-                // Jika sudah tidak ada tombol hapus lagi, berarti kedua bagian sudah dihapus
-                // Maka hapus seluruh baris proyek
                 if (actionsContainer.children.length === 0) {
                     repoItem.style.opacity = '0';
                     setTimeout(() => repoItem.remove(), 300);
                 } else {
-                    // Jika masih ada tombol lain (misal: tombol Vercel),
-                    // dan yang baru saja dihapus adalah repo GitHub,
-                    // ubah teks info untuk menandakan repo sudah tidak ada.
                     if (action === 'deleteRepo') {
                         repoInfo.innerHTML = `<strong>${repoName}</strong><span>(Hanya ada di Vercel)</span>`;
                     }
