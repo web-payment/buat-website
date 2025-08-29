@@ -30,9 +30,11 @@ document.addEventListener('DOMContentLoaded', () => {
     const finalPriceDisplay = document.getElementById('final-price-display');
     const buyButton = document.getElementById('buy-button');
 
-    // === Tambahan untuk Modal Harga ===
+    // === Elemen Modal Harga (Diperbarui) ===
     const priceModal = document.getElementById('price-modal');
+    const modalNormalPriceContainer = document.getElementById('modal-normal-price-container');
     const modalNormalPrice = document.getElementById('modal-normal-price');
+    const modalFinalPriceLabel = document.getElementById('modal-final-price-label');
     const modalFinalPrice = document.getElementById('modal-final-price');
     const modalBuyBtn = document.getElementById('modal-buy-btn');
     const modalPriceClose = document.getElementById('modal-price-close');
@@ -48,7 +50,7 @@ document.addEventListener('DOMContentLoaded', () => {
         clearTimeout(toastTimeout);
         const iconMap = { success: 'fa-check-circle', error: 'fa-times-circle', info: 'fa-info-circle' };
         toast.innerHTML = `<i class="fas ${iconMap[type]}"></i> ${message}`;
-        toast.className = 'notification'; // Reset class
+        toast.className = 'toast-notification'; // Reset class
         toast.classList.add(type, 'show');
         toastTimeout = setTimeout(() => { toast.classList.remove('show'); }, 4000);
     };
@@ -95,7 +97,7 @@ document.addEventListener('DOMContentLoaded', () => {
                     <span>${site.vercelUrl.replace('https://','')}</span>
                 </div>
                 <span class="status ${site.status}">${site.status === 'success' ? 'Aktif' : 'Menunggu'}</span>
-                <button class="delete-site-btn" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--error-color); font-size:1.2em; cursor:pointer;">
+                <button class="delete-site-btn" style="position:absolute; right:10px; top:50%; transform:translateY(-50%); background:none; border:none; color:var(--error-color); font-size:1.2em; cursor:pointer; padding: 5px;">
                     <i class="fas fa-trash"></i>
                 </button>
             `;
@@ -105,11 +107,10 @@ document.addEventListener('DOMContentLoaded', () => {
                 }
             });
 
-            // === Tombol hapus riwayat ala iPhone ===
             const deleteBtn = item.querySelector('.delete-site-btn');
             deleteBtn.addEventListener('click', async (e) => {
                 e.stopPropagation();
-                const confirm = await showConfirmation('Hapus Website?', `Anda yakin ingin menghapus ${site.customUrl}?`);
+                const confirm = await showConfirmation('Hapus Riwayat?', `Anda yakin ingin menghapus riwayat untuk ${site.customUrl}? Tindakan ini tidak menghapus website.`);
                 if (confirm) {
                     removeSite(site.projectName);
                     showToast('Riwayat berhasil dihapus.', 'success');
@@ -199,12 +200,13 @@ document.addEventListener('DOMContentLoaded', () => {
 
         if (isDiscountActive) {
             discountBanner.style.display = 'block';
+            normalPriceDisplay.style.display = 'block';
             normalPriceDisplay.textContent = `Rp ${normalPrice.toLocaleString('id-ID')}`;
             finalPriceDisplay.textContent = `Rp ${discountPrice.toLocaleString('id-ID')}`;
             startCountdown(discountEndDate);
         } else {
             discountBanner.style.display = 'none';
-            normalPriceDisplay.textContent = '';
+            normalPriceDisplay.style.display = 'none'; // Sembunyikan harga normal jika tidak diskon
             finalPriceDisplay.textContent = `Rp ${normalPrice.toLocaleString('id-ID')}`;
             if(countdownInterval) clearInterval(countdownInterval);
         }
@@ -248,12 +250,33 @@ document.addEventListener('DOMContentLoaded', () => {
         fileNameSpan.textContent = websiteFileInput.files.length > 0 ? websiteFileInput.files[0].name : 'Pilih file...';
     });
     
-    // === Tombol lihat harga (buka modal) ===
+    // === [PERBAIKAN] Tombol lihat harga (buka modal) ===
     buyButton.addEventListener('click', () => {
-        modalNormalPrice.textContent = normalPriceDisplay.textContent || 'Rp 0';
-        modalFinalPrice.textContent = finalPriceDisplay.textContent || 'Rp 0';
+        const normalPrice = settings.normalPrice || 0;
+        const discountPrice = settings.discountPrice || 0;
+        const discountEndDate = settings.discountEndDate ? new Date(settings.discountEndDate) : null;
+        const isDiscountActive = discountEndDate && new Date(discountEndDate) > new Date();
+
+        if (isDiscountActive) {
+            // Tampilkan tampilan diskon
+            modalNormalPriceContainer.style.display = 'flex';
+            modalNormalPrice.textContent = `Rp ${normalPrice.toLocaleString('id-ID')}`;
+            modalNormalPrice.style.textDecoration = 'line-through';
+            modalNormalPrice.style.color = 'var(--text-muted)';
+            
+            modalFinalPriceLabel.textContent = 'Harga Diskon';
+            modalFinalPrice.textContent = `Rp ${discountPrice.toLocaleString('id-ID')}`;
+        } else {
+            // Tampilkan tampilan harga normal
+            modalNormalPriceContainer.style.display = 'none'; // Sembunyikan baris harga normal
+            
+            modalFinalPriceLabel.textContent = 'Harga';
+            modalFinalPrice.textContent = `Rp ${normalPrice.toLocaleString('id-ID')}`;
+        }
+        
         priceModal.classList.add('show');
     });
+
     modalBuyBtn.addEventListener('click', () => {
         const waNumber = settings.whatsappNumber;
         if (!waNumber) return showToast('Nomor WhatsApp admin belum diatur.', 'error');

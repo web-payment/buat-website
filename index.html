@@ -98,7 +98,6 @@
         #confirm-btn-no { color: var(--primary-color); border-right: 1px solid var(--border-color); border-bottom-left-radius: 20px; }
         #confirm-btn-yes { color: var(--error-color); font-weight: 600; border-bottom-right-radius: 20px;}
         
-        /* Optional: kecilkan jejak visual kartu harga karena sekarang pakai modal */
         .pricing-grid .price-card { padding: 16px; }
         .pricing-grid .price-card .price-tag { margin: 8px 0; }
         .pricing-grid .price-card .final-price { font-size: 1.4em; }
@@ -141,10 +140,9 @@
                     <div class="price-card">
                         <h3>API Key Permanen</h3>
                         <div class="price-tag">
-                            <div class="normal-price" id="normal-price-display">Rp 0</div>
+                            <div class="normal-price" id="normal-price-display"></div>
                             <div class="final-price" id="final-price-display">Rp 0</div>
                         </div>
-                        <!-- Tombol ini kini hanya membuka modal harga -->
                         <button class="button-primary" id="buy-button"><i class="fas fa-tags"></i> Lihat Harga</button>
                     </div>
                 </div>
@@ -181,20 +179,21 @@
         </div>
     </div>
 
-    <!-- ====== MODAL HARGA (BARU) ====== -->
     <div id="price-modal" class="modal-overlay">
         <div class="modal-content">
             <div class="modal-header">
                 <i class="fas fa-tag" style="color: var(--primary-color);"></i>
                 <h2>Harga API Key</h2>
             </div>
-            <div class="modal-body-item">
-                <strong>Harga Normal:</strong>
-                <span id="modal-normal-price">Rp 0</span>
-            </div>
-            <div class="modal-body-item">
-                <strong>Harga Diskon:</strong>
-                <span id="modal-final-price">Rp 0</span>
+            <div style="padding: 5px 0 15px;">
+                <div class="modal-body-item" id="modal-normal-price-container" style="display: flex; justify-content: space-between; align-items: baseline;">
+                    <strong>Harga Normal</strong>
+                    <span id="modal-normal-price" style="font-size: 1.1em;"></span>
+                </div>
+                <div class="modal-body-item" style="display: flex; justify-content: space-between; align-items: baseline; margin-bottom: 0;">
+                    <strong id="modal-final-price-label">Harga Final</strong>
+                    <span id="modal-final-price" style="font-size: 1.7em; font-weight: 600; color: var(--primary-color);"></span>
+                </div>
             </div>
             <button class="button-primary" id="modal-buy-btn">
                 <i class="fab fa-whatsapp"></i> Beli via WhatsApp
@@ -202,8 +201,6 @@
             <button class="button-primary" id="modal-price-close" style="margin-top: 10px; background-color: var(--text-muted);">Tutup</button>
         </div>
     </div>
-    <!-- ====== END MODAL HARGA ====== -->
-
     <div id="confirmation-modal" class="modal-overlay">
         <div class="modal-content" style="max-width: 350px;">
              <h3 id="confirmation-modal-title" style="text-align: center; font-weight: 600; padding: 20px 20px 5px;"></h3>
