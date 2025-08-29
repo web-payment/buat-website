@@ -15,14 +15,25 @@ const VERCEL_TEAM_ID = process.env.VERCEL_TEAM_ID;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD;
 const REPO_NAME_FOR_JSON = process.env.REPO_NAME_FOR_JSON;
 const VERCEL_A_RECORD = '76.76.21.21';
-const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN;
+
+// [PERUBAHAN PENTING] Mengambil Email dan Global API Key
+const CLOUDFLARE_API_TOKEN = process.env.CLOUDFLARE_API_TOKEN; // Ini sekarang adalah Global API Key
+const CLOUDFLARE_EMAIL = process.env.CLOUDFLARE_EMAIL; // Email Cloudflare Anda
 const CLOUDFLARE_ACCOUNT_ID = process.env.CLOUDFLARE_ACCOUNT_ID;
+
 
 const octokit = new Octokit({ auth: GITHUB_TOKEN });
 const VERCEL_API_BASE = `https://api.vercel.com`;
 const VERCEL_HEADERS = { "Authorization": `Bearer ${VERCEL_TOKEN}`, "Content-Type": "application/json" };
 const TEAM_QUERY = VERCEL_TEAM_ID ? `?teamId=${VERCEL_TEAM_ID}` : '';
-const CF_HEADERS = { "Authorization": `Bearer ${CLOUDFLARE_API_TOKEN}`, "Content-Type": "application/json" };
+
+// [PERUBAHAN PENTING] Mengubah cara otentikasi ke Cloudflare
+const CF_HEADERS = {
+    "X-Auth-Email": CLOUDFLARE_EMAIL,
+    "X-Auth-Key": CLOUDFLARE_API_TOKEN,
+    "Content-Type": "application/json"
+};
+
 
 // --- Helper Functions ---
 async function readJsonFromGithub(filePath) {
@@ -154,8 +165,6 @@ async function handleJsonActions(req, res) {
             case "listDnsRecords": { const { zoneId } = data; if (!zoneId) throw new Error("Zone ID diperlukan."); let allRecords = []; let page = 1; let totalPages; do { const response = await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records?page=${page}&per_page=100`, { headers: CF_HEADERS }); const result = await response.json(); if (!result.success) throw new Error("Gagal mengambil data DNS dari Cloudflare."); allRecords = allRecords.concat(result.result); totalPages = result.result_info.total_pages; page++; } while (page <= totalPages); return res.status(200).json(allRecords); }
             case "bulkDeleteDnsRecords": { const { zoneId, recordIds } = data; if (!zoneId || !recordIds || recordIds.length === 0) throw new Error("Data tidak lengkap untuk hapus DNS."); const results = await Promise.all(recordIds.map(recordId => fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records/${recordId}`, { method: 'DELETE', headers: CF_HEADERS }))); const successCount = results.filter(r => r.ok).length; return res.status(200).json({ message: `${successCount} dari ${recordIds.length} record DNS berhasil dihapus.` }); }
             case "bulkDeleteCloudflareZones": { const { zoneIds } = data; if (!zoneIds || zoneIds.length === 0) throw new Error("Tidak ada zona yang dipilih untuk dihapus."); const results = await Promise.all(zoneIds.map(zoneId => fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}`, { method: 'DELETE', headers: CF_HEADERS }))); const successCount = results.filter(r => r.ok).length; return res.status(200).json({ message: `${successCount} dari ${zoneIds.length} zona berhasil dihapus.` }); }
-            
-            // [FITUR BARU DITAMBAHKAN DI SINI]
             case "createTokenForExistingZone": {
                 const { zoneId, zoneName } = data;
                 if (!zoneId || !zoneName) throw new Error("Zone ID dan Zone Name diperlukan.");
@@ -214,7 +223,6 @@ async function handleJsonActions(req, res) {
                     apiToken: apiToken
                 });
             }
-
             default:
                 return res.status(400).json({ message: "Aksi tidak dikenal." });
         }
