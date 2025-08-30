@@ -363,54 +363,58 @@ async function handleCreateWebsite(request, response) {
         }
         const zoneId = zoneData.result[0].id;
 
+        if (addDomainResult.error?.code === 'domain_requires_verification') {
+            console.log("Verifikasi domain diperlukan oleh Vercel.");
+            
+            const txtVerification = addDomainResult.error.verification?.find(v => v.type === 'TXT');
 
+            if (txtVerification) {
+                console.log("Metode verifikasi TXT terdeteksi. Memulai proses...");
+                const txtName = txtVerification.domain;
+                const txtValue = txtVerification.value;
+                
+                console.log(`Menambahkan TXT record: Name=${txtName}, Value=${txtValue}`);
+                const createTxtRes = await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records`, {
+                    method: "POST", headers: cfAuthHeaderForDns,
+                    body: JSON.stringify({ type: 'TXT', name: txtName, content: txtValue, ttl: 60 })
+                });
+                const createTxtResult = await createTxtRes.json();
+                if (!createTxtResult.success) {
+                    console.error("Gagal membuat TXT record di Cloudflare:", createTxtResult.errors);
+                    throw new Error(`Gagal membuat record verifikasi di Cloudflare: ${createTxtResult.errors[0]?.message}`);
+                }
+
+                console.log("Menunggu 60 detik untuk propagasi DNS...");
+                await new Promise(resolve => setTimeout(resolve, 60000));
+
+                console.log("Mencoba memverifikasi domain di Vercel...");
+                const verifyRes = await fetch(`${VERCEL_API_BASE}/v9/projects/${repoName}/domains/${finalDomain}/verify${TEAM_QUERY}`, { method: "POST", headers: VERCEL_HEADERS });
+                const verifyResult = await verifyRes.json();
+
+                if (!verifyRes.ok || verifyResult.error) {
+                     const errorMessage = verifyResult.error?.message || 'Verifikasi gagal tanpa pesan spesifik.';
+                     console.error("Gagal verifikasi otomatis:", errorMessage);
+                     throw new Error(`Verifikasi domain gagal: ${errorMessage}. DNS mungkin butuh waktu lebih lama. Coba lagi dalam beberapa menit.`);
+                }
+                console.log("Verifikasi domain TXT berhasil!");
+
+            } else {
+                console.log("Vercel memerlukan verifikasi, tetapi tidak menyediakan metode TXT. Akan dilanjutkan dengan A record saja.");
+            }
+        } else if (addDomainResult.error) {
+            throw new Error(`Gagal menambahkan domain ke Vercel: ${addDomainResult.error.message}`);
+        }
+
+        console.log(`Membersihkan record A lama untuk ${finalDomain} (jika ada)...`);
         const existingRecordsRes = await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records?type=A&name=${finalDomain}`, { headers: cfAuthHeaderForDns });
         const existingRecords = await existingRecordsRes.json();
         if (existingRecords.success && existingRecords.result.length > 0) {
-            console.log(`Menemukan dan menghapus ${existingRecords.result.length} record A lama untuk ${finalDomain}.`);
             for (const record of existingRecords.result) {
                 await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records/${record.id}`, { method: 'DELETE', headers: cfAuthHeaderForDns });
             }
         }
 
-        if (addDomainResult.error?.code === 'domain_requires_verification') {
-            console.log("Domain memerlukan verifikasi. Memulai proses verifikasi otomatis...");
-            const verificationData = addDomainResult.error.verification[0];
-            
-            // Menggunakan nama record langsung dari Vercel
-            const txtName = verificationData.domain; 
-            const txtValue = verificationData.value;
-            
-            console.log(`Menambahkan TXT record: Name=${txtName}, Value=${txtValue}`);
-            const createTxtRes = await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records`, {
-                method: "POST", headers: cfAuthHeaderForDns,
-                body: JSON.stringify({ type: 'TXT', name: txtName, content: txtValue, ttl: 60 })
-            });
-
-            const createTxtResult = await createTxtRes.json();
-            if (!createTxtResult.success) {
-                console.error("Gagal membuat TXT record di Cloudflare:", createTxtResult.errors);
-                throw new Error(`Gagal membuat record verifikasi di Cloudflare: ${createTxtResult.errors[0]?.message}`);
-            }
-
-            console.log("Menunggu 45 detik untuk propagasi DNS...");
-            await new Promise(resolve => setTimeout(resolve, 45000));
-
-            console.log("Mencoba memverifikasi domain di Vercel...");
-            const verifyRes = await fetch(`${VERCEL_API_BASE}/v9/projects/${repoName}/domains/${finalDomain}/verify${TEAM_QUERY}`, { method: "POST", headers: VERCEL_HEADERS });
-            const verifyResult = await verifyRes.json();
-
-            if (!verifyRes.ok || verifyResult.error) {
-                 const errorMessage = verifyResult.error?.message || 'Verifikasi gagal tanpa pesan spesifik.';
-                 console.error("Gagal verifikasi otomatis:", errorMessage);
-                 throw new Error(`Verifikasi domain gagal: ${errorMessage}. DNS mungkin butuh waktu lebih lama. Coba lagi dalam beberapa menit.`);
-            }
-            console.log("Verifikasi domain berhasil!");
-        } else if (addDomainResult.error) {
-            throw new Error(`Gagal menambahkan domain ke Vercel: ${addDomainResult.error.message}`);
-        }
-
-        console.log(`Menambahkan A record untuk ${subdomain} -> ${VERCEL_A_RECORD}`);
+        console.log(`Menambahkan A record baru untuk ${subdomain} -> ${VERCEL_A_RECORD}`);
         await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records`, {
             method: "POST", headers: cfAuthHeaderForDns,
             body: JSON.stringify({ type: 'A', name: subdomain, content: VERCEL_A_RECORD, proxied: false, ttl: 60 })
