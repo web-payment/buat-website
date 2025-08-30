@@ -366,31 +366,55 @@ async function handleCreateWebsite(request, response) {
         const zoneId = zoneData.result[0].id;
 
 
-        const existingRecordsRes = await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records?name=${finalDomain}`, { headers: cfAuthHeaderForDns });
+        // [PERBAIKAN] Hapus record A yang mungkin sudah ada SEBELUM mencoba verifikasi
+        const existingRecordsRes = await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records?type=A&name=${finalDomain}`, { headers: cfAuthHeaderForDns });
         const existingRecords = await existingRecordsRes.json();
         if (existingRecords.success && existingRecords.result.length > 0) {
+            console.log(`Menemukan dan menghapus ${existingRecords.result.length} record A lama untuk ${finalDomain}.`);
             for (const record of existingRecords.result) {
                 await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records/${record.id}`, { method: 'DELETE', headers: cfAuthHeaderForDns });
             }
         }
 
+        // [PERBAIKAN] Logika penanganan verifikasi domain
         if (addDomainResult.error?.code === 'domain_requires_verification') {
+            console.log("Domain memerlukan verifikasi. Memulai proses verifikasi otomatis...");
             const verificationData = addDomainResult.error.verification[0];
-            const txtName = verificationData.domain.replace(`.${rootDomain}`, '');
+            
+            // Menentukan nama TXT record yang benar
+            const txtName = verificationData.domain.startsWith('_vercel') ? '_vercel' : `_vercel.${verificationData.domain.split('.')[0]}`;
             const txtValue = verificationData.value;
             
+            console.log(`Menambahkan TXT record: Name=${txtName}, Value=${txtValue}`);
             await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records`, {
                 method: "POST", headers: cfAuthHeaderForDns,
-                body: JSON.stringify({ type: 'TXT', name: txtName, content: txtValue, ttl: 1 })
+                body: JSON.stringify({ type: 'TXT', name: txtName, content: txtValue, ttl: 60 }) // TTL 1 menit
             });
+
+            console.log("Menunggu 20 detik untuk propagasi DNS...");
             await new Promise(resolve => setTimeout(resolve, 20000));
 
-            await fetch(`${VERCEL_API_BASE}/v9/projects/${repoName}/domains/${finalDomain}/verify${TEAM_QUERY}`, { method: "POST", headers: VERCEL_HEADERS });
+            console.log("Mencoba memverifikasi domain di Vercel...");
+            const verifyRes = await fetch(`${VERCEL_API_BASE}/v9/projects/${repoName}/domains/${finalDomain}/verify${TEAM_QUERY}`, { method: "POST", headers: VERCEL_HEADERS });
+            const verifyResult = await verifyRes.json();
+
+            // Cek jika verifikasi gagal
+            if (verifyResult.error) {
+                 console.error("Gagal verifikasi otomatis:", verifyResult.error.message);
+                 // Melemparkan error agar pengguna tahu prosesnya tidak berhasil
+                 throw new Error(`Gagal verifikasi domain: ${verifyResult.error.message}. Coba lagi beberapa saat.`);
+            }
+            console.log("Verifikasi domain berhasil!");
+        } else if (addDomainResult.error) {
+            // Jika ada error lain selain verifikasi, lemparkan error
+            throw new Error(`Gagal menambahkan domain ke Vercel: ${addDomainResult.error.message}`);
         }
 
+        // Setelah verifikasi (jika diperlukan) atau jika tidak perlu, tambahkan record A
+        console.log(`Menambahkan A record untuk ${subdomain} -> ${VERCEL_A_RECORD}`);
         await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records`, {
             method: "POST", headers: cfAuthHeaderForDns,
-            body: JSON.stringify({ type: 'A', name: subdomain, content: VERCEL_A_RECORD, proxied: false, ttl: 1 })
+            body: JSON.stringify({ type: 'A', name: subdomain, content: VercEL_A_RECORD, proxied: false, ttl: 60 }) // TTL 1 menit
         });
         
         const vercelUrl = vercelProject.alias?.find(a => a.domain.endsWith('.vercel.app'))?.domain || `${repoName}.vercel.app`;
