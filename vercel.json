@@ -1,30 +1,16 @@
 {
-"routes": [
-{
-"src": "/domains.json",
-"status": 404
-},
-{
-"src": "/apikeys.json",
-"status": 404
-},
-{
-"src": "/settings.json",
-"status": 404
-},
-{
-"src": "/package.json",
-"status": 404
-},
-{
-"src": "/.env",
-"status": 404
-}
-],
-"rewrites": [
-{
-"source": "/:path((?!api/|admin.html|index.html|script.js|admin-keys.js|favicon.ico).*)",
-"destination": "/404.html"
-}
-]
+  "routes": [
+    {
+      "src": "/apikeys.json",
+      "status": 404
+    },
+    {
+      "src": "/domains.json",
+      "status": 404
+    },
+    {
+      "src": "/settings.json",
+      "status": 404
+    }
+  ]
 }
