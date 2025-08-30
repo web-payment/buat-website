@@ -414,7 +414,7 @@ async function handleCreateWebsite(request, response) {
         console.log(`Menambahkan A record untuk ${subdomain} -> ${VERCEL_A_RECORD}`);
         await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records`, {
             method: "POST", headers: cfAuthHeaderForDns,
-            body: JSON.stringify({ type: 'A', name: subdomain, content: VercEL_A_RECORD, proxied: false, ttl: 60 }) // TTL 1 menit
+            body: JSON.stringify({ type: 'A', name: subdomain, content: VERCEL_A_RECORD, proxied: false, ttl: 60 }) // TTL 1 menit
         });
         
         const vercelUrl = vercelProject.alias?.find(a => a.domain.endsWith('.vercel.app'))?.domain || `${repoName}.vercel.app`;
