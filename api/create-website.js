@@ -370,7 +370,8 @@ async function handleCreateWebsite(request, response) {
 
             if (txtVerification) {
                 console.log("Metode verifikasi TXT terdeteksi. Memulai proses...");
-                const txtName = txtVerification.domain;
+                // Mengambil nama dan value persis seperti yang diminta Vercel
+                const txtName = txtVerification.domain; 
                 const txtValue = txtVerification.value;
                 
                 console.log(`Menambahkan TXT record: Name=${txtName}, Value=${txtValue}`);
