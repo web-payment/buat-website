@@ -53,16 +53,16 @@ const listAllCloudflareZonesHelper = async () => {
             const result = await response.json();
             if (!result.success) {
                 console.error("Cloudflare API Error:", result.errors);
-                return []; // Kembalikan array kosong jika gagal
+                return []; 
             }
             allZones = allZones.concat(result.result);
             totalPages = result.result_info.total_pages;
             page++;
         } while (page <= totalPages);
-        return allZones.map(zone => zone.name); // Hanya kembalikan nama domain
+        return allZones.map(zone => zone.name); 
     } catch (error) {
         console.error("Failed to fetch from Cloudflare:", error);
-        return []; // Kembalikan array kosong jika ada error network
+        return [];
     }
 };
 
@@ -193,7 +193,6 @@ async function handleJsonActions(req, res) {
             case "bulkDeleteDnsRecords": { const { zoneId, recordIds } = data; if (!zoneId || !recordIds || recordIds.length === 0) throw new Error("Data tidak lengkap untuk hapus DNS."); const results = await Promise.all(recordIds.map(recordId => fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records/${recordId}`, { method: 'DELETE', headers: CF_HEADERS }))); const successCount = results.filter(r => r.ok).length; return res.status(200).json({ message: `${successCount} dari ${recordIds.length} record DNS berhasil dihapus.` }); }
             case "bulkDeleteCloudflareZones": { const { zoneIds } = data; if (!zoneIds || zoneIds.length === 0) throw new Error("Tidak ada zona yang dipilih untuk dihapus."); const results = await Promise.all(zoneIds.map(zoneId => fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}`, { method: 'DELETE', headers: CF_HEADERS }))); const successCount = results.filter(r => r.ok).length; return res.status(200).json({ message: `${successCount} dari ${zoneIds.length} zona berhasil dihapus.` }); }
             
-            // --- [BARU] Aksi untuk mengelola domains.json ---
             case "getManagedDomains": {
                 const domains = await readJsonFromGithub(DOMAINS_JSON_PATH_GITHUB);
                 return res.status(200).json(domains);
@@ -227,7 +226,6 @@ async function handleJsonActions(req, res) {
                 await writeJsonToGithub(DOMAINS_JSON_PATH_GITHUB, domains, `Delete managed domains: ${domainsToDelete.join(', ')}`);
                 return res.status(200).json({ message: `${deletedCount} domain berhasil dihapus.`, domains });
             }
-            // --- Akhir Aksi Baru ---
 
             default:
                 return res.status(400).json({ message: "Aksi tidak dikenal." });
@@ -366,7 +364,6 @@ async function handleCreateWebsite(request, response) {
         const zoneId = zoneData.result[0].id;
 
 
-        // [PERBAIKAN] Hapus record A yang mungkin sudah ada SEBELUM mencoba verifikasi
         const existingRecordsRes = await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records?type=A&name=${finalDomain}`, { headers: cfAuthHeaderForDns });
         const existingRecords = await existingRecordsRes.json();
         if (existingRecords.success && existingRecords.result.length > 0) {
@@ -376,45 +373,47 @@ async function handleCreateWebsite(request, response) {
             }
         }
 
-        // [PERBAIKAN] Logika penanganan verifikasi domain
         if (addDomainResult.error?.code === 'domain_requires_verification') {
             console.log("Domain memerlukan verifikasi. Memulai proses verifikasi otomatis...");
             const verificationData = addDomainResult.error.verification[0];
             
-            // Menentukan nama TXT record yang benar
-            const txtName = verificationData.domain.startsWith('_vercel') ? '_vercel' : `_vercel.${verificationData.domain.split('.')[0]}`;
+            // Menggunakan nama record langsung dari Vercel
+            const txtName = verificationData.domain; 
             const txtValue = verificationData.value;
             
             console.log(`Menambahkan TXT record: Name=${txtName}, Value=${txtValue}`);
-            await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records`, {
+            const createTxtRes = await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records`, {
                 method: "POST", headers: cfAuthHeaderForDns,
-                body: JSON.stringify({ type: 'TXT', name: txtName, content: txtValue, ttl: 60 }) // TTL 1 menit
+                body: JSON.stringify({ type: 'TXT', name: txtName, content: txtValue, ttl: 60 })
             });
 
-            console.log("Menunggu 20 detik untuk propagasi DNS...");
-            await new Promise(resolve => setTimeout(resolve, 20000));
+            const createTxtResult = await createTxtRes.json();
+            if (!createTxtResult.success) {
+                console.error("Gagal membuat TXT record di Cloudflare:", createTxtResult.errors);
+                throw new Error(`Gagal membuat record verifikasi di Cloudflare: ${createTxtResult.errors[0]?.message}`);
+            }
+
+            console.log("Menunggu 45 detik untuk propagasi DNS...");
+            await new Promise(resolve => setTimeout(resolve, 45000));
 
             console.log("Mencoba memverifikasi domain di Vercel...");
             const verifyRes = await fetch(`${VERCEL_API_BASE}/v9/projects/${repoName}/domains/${finalDomain}/verify${TEAM_QUERY}`, { method: "POST", headers: VERCEL_HEADERS });
             const verifyResult = await verifyRes.json();
 
-            // Cek jika verifikasi gagal
-            if (verifyResult.error) {
-                 console.error("Gagal verifikasi otomatis:", verifyResult.error.message);
-                 // Melemparkan error agar pengguna tahu prosesnya tidak berhasil
-                 throw new Error(`Gagal verifikasi domain: ${verifyResult.error.message}. Coba lagi beberapa saat.`);
+            if (!verifyRes.ok || verifyResult.error) {
+                 const errorMessage = verifyResult.error?.message || 'Verifikasi gagal tanpa pesan spesifik.';
+                 console.error("Gagal verifikasi otomatis:", errorMessage);
+                 throw new Error(`Verifikasi domain gagal: ${errorMessage}. DNS mungkin butuh waktu lebih lama. Coba lagi dalam beberapa menit.`);
             }
             console.log("Verifikasi domain berhasil!");
         } else if (addDomainResult.error) {
-            // Jika ada error lain selain verifikasi, lemparkan error
             throw new Error(`Gagal menambahkan domain ke Vercel: ${addDomainResult.error.message}`);
         }
 
-        // Setelah verifikasi (jika diperlukan) atau jika tidak perlu, tambahkan record A
         console.log(`Menambahkan A record untuk ${subdomain} -> ${VERCEL_A_RECORD}`);
         await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/dns_records`, {
             method: "POST", headers: cfAuthHeaderForDns,
-            body: JSON.stringify({ type: 'A', name: subdomain, content: VERCEL_A_RECORD, proxied: false, ttl: 60 }) // TTL 1 menit
+            body: JSON.stringify({ type: 'A', name: subdomain, content: VERCEL_A_RECORD, proxied: false, ttl: 60 })
         });
         
         const vercelUrl = vercelProject.alias?.find(a => a.domain.endsWith('.vercel.app'))?.domain || `${repoName}.vercel.app`;
