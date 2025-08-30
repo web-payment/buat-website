@@ -2,37 +2,29 @@
 "routes": [
 {
 "src": "/domains.json",
-"dest": "/404.html",
 "status": 404
 },
 {
 "src": "/apikeys.json",
-"dest": "/404.html",
 "status": 404
 },
 {
 "src": "/settings.json",
-"dest": "/404.html",
 "status": 404
 },
 {
 "src": "/package.json",
-"dest": "/404.html",
 "status": 404
 },
 {
 "src": "/.env",
-"dest": "/404.html",
 "status": 404
-},
-{
-"src": "/(.*)",
-"missing": [
-{ "type": "route" },
-{ "type": "header", "key": "x-vercel-id" }
+}
 ],
-"dest": "/404.html",
-"status": 404
+"rewrites": [
+{
+"source": "/:path((?!api/|admin.html|index.html|script.js|admin-keys.js|favicon.ico).*)",
+"destination": "/404.html"
 }
 ]
 }
